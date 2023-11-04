@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="d3.v7.js"></script>
+    <script src="jquery.min.js"></script>
+    <script src="triangulation.js"></script>
+  </head>
+  <body>
+    <svg id="polygon" width="1000" height="1000"></svg>
+    <script>
+      let N = 10
+      let triangulationPolygon = new TriangulationPolygon(9, 300)
+      triangulationPolygon.draw()
+    </script>
+  </body>
+</html>
