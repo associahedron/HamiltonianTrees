@@ -6,6 +6,7 @@ import { button } from './button';
 // https://gist.github.com/mbostock/1125997
 // https://observablehq.com/@mbostock/scrubber
 // https://stackoverflow.com/questions/23048263/pausing-and-resuming-a-transition
+
 const margin = {
   top: 20,
   right: 30,
@@ -42,9 +43,14 @@ const width =
 const height =
   window.innerHeight - margin.top - margin.bottom;
 
-// const title = select('body')
+
+const title = select('body')
+  .append('h1')
+  .text(`Rotational Hamiltonian Trees`);
+
+// const original = select('body')
 //   .append('h3')
-//   .text(`Original: ${codeword}`);
+//   .text(`Original: ${"WIP"}`);
 
 const codewordHeader = select('body')
   .append('h3')
@@ -61,21 +67,20 @@ const svg = select('body')
 
 const NMenu = menuContainer.append('div');
 const codewordMenu = menuContainer.append('div');
+const startAnimationButton = menuContainer.append(
+  'div'
+);
 const restartDrawButton = menuContainer.append(
   'div'
 );
 
-const startAnimationButton = menuContainer.append(
-  'div'
-);
+
 const radius = 100;
 const pointSize = 4;
 
 const color = 'black';
 const pointColor = 'black';
 const interp = d3["interpolateViridis"]
-
-console.log(codewords);
 
 // const decLast = (codeword) => {
 //   let N = codeword.length - 1;
@@ -123,7 +128,9 @@ function main() {
       let parsedCodeword = []
       if (cw != 'none') {
         parsedCodeword = cw.split(',');
-      } 
+      } else {
+        poly.reset()
+      }
       clearInterval(animationInter)
       svg.call(poly.codeword(parsedCodeword));
       codewordHeader.text(`Codeword: ${parsedCodeword}`);
@@ -140,7 +147,6 @@ function main() {
       const options = createCodewordOptions(cws);
       select("#codeword-menu").property("selectedIndex", -1)
       codewordMenu.call(cw.options(options));
-      poly.codeword([])
       clearInterval(animationInter)
       svg.call(poly.N(n))
       codewordHeader.text(`Codeword: ${[]}`)
@@ -154,7 +160,7 @@ function main() {
       // const colormap = poly.colorMap();
 
       clearInterval(animationInter)
-      svg.call(poly.codeword([]));
+      svg.call(poly.reset());
 
       //   .call(
       //   poly.updateInteriorEdges(before, colormap)
@@ -166,9 +172,6 @@ function main() {
     .id('start-button')
     .on('click', (_) => {
       playAnimation(poly);
-      //   .call(
-      //   poly.updateInteriorEdges(before, colormap)
-      // );
     });
 
   const poly = polygon()
@@ -180,7 +183,7 @@ function main() {
     .strokeWidth(2)
     .color(color)
     .margin(margin)
-    .drawDelay(200)
+    .drawDelay(500)
     .transDuration(1000)
     .interp(interp)
     .on('end', (_) => {

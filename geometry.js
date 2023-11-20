@@ -35,7 +35,6 @@ export const createPolygonPoints = (
     let uy = vec_y / mag;
 
     let point = { x, y, ux, uy };
-    console.log(point);
     points.push(point);
   }
   points.reverse();

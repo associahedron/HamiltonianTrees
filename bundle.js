@@ -119,8 +119,11 @@
       var ux = vec_x / mag;
       var uy = vec_y / mag;
 
+      // x = +x.toFixed(2)
+      // y = +y.toFixed(2)
+      // ux = +ux.toFixed(2)
+      // uy = +uy.toFixed(2)
       var point = { x: x, y: y, ux: ux, uy: uy };
-      console.log(point);
       points.push(point);
     }
     points.reverse();
@@ -202,6 +205,59 @@
     return all_edges;
   };
 
+  /**
+   * The order of the edges in e2 is as closely matched to e1 as much as possible
+   * If there are at least 2 edge differences, the original e2 is returned
+   * Otherwise, an ordered e2 is return
+   * @param {Object[]} e1 The previous interior edges
+   * @param {Object[]} e2 The current interior edges
+   * @return {Object[]} All valid codewords for an N-polygon
+   */
+  var positionEdges = function (e1, e2) {
+    if (e1 == null || e1.length == 0) { return e2 }
+
+    var new_res = new Array(e1.length).fill(-1);
+    var numbers = Array.from(Array(e1.length).keys());
+    var unusedIndex = new Set(numbers);
+
+    var idxDict = {};
+    for (var i = 0; i < e1.length; i++) {
+      var ref = e1[i];
+      var start_idx = ref.start_idx;
+      var end_idx = ref.end_idx;
+      var key = "" + start_idx + end_idx;
+      idxDict[key] = i;
+    }
+
+    var count = 0;
+    var unused = null;
+    for (var j = 0; j < e2.length; j++) {
+      var ref$1 = e2[j];
+      var start_idx$1 = ref$1.start_idx;
+      var end_idx$1 = ref$1.end_idx;
+      var key$1 = "" + start_idx$1 + end_idx$1;
+      if (idxDict[key$1] == undefined) {
+        unused = e2[j];
+        count += 1;
+      } else if (idxDict[key$1] !== j) {
+        new_res[idxDict[key$1]] = e2[j];
+        unusedIndex.delete(idxDict[key$1]);
+      } else {
+        new_res[j] = e2[j];
+        unusedIndex.delete(j);
+      }
+    }
+
+    if (count > 1) { return e2 }
+
+    var keys = unusedIndex.keys();
+    var value = keys.next().value;
+
+    new_res[value] = unused;
+
+    return new_res
+  };
+
   var polygon = function () {
     var N;
     var codeword;
@@ -214,6 +270,9 @@
     var strokeWidth;
 
     var drawDelay;
+
+    var lastEdges;
+
     var interp;
 
     var listeners = d3$1.dispatch('end');
@@ -224,8 +283,12 @@
       var points = createPolygonPoints(N, radius, margin.left, margin.top);
       var polygonEdges = createPolygonEdges(points);
       var interiorEdges = getCodewordEdges(points, codeword);
-      var indexPoints = interiorEdges.map(function (e) { return [e.start_idx, e.end_idx]; });
-      console.log(indexPoints, "IDX POINTS");
+
+      // NOTE: This code is very dangerous, refactor later
+      if (lastEdges != null) {
+        interiorEdges = positionEdges(lastEdges, interiorEdges);
+      }
+      lastEdges = interiorEdges;
       var t = d3$1.transition().duration(transDuration);
       var pointLine = d3$1.line()
         .x(function (d) { return d.x; })
@@ -256,6 +319,13 @@
           .attr('cy', function (d) { return d.y; });
       };
 
+      var positionText = function (text) {
+        text
+          .attr('x', function (d) { return d.x - 3 + d.ux * 15; })
+          .attr('y', function (d) { return d.y + 6 + d.uy * 15; });
+      };
+
+
       selection
         .selectAll('text')
         .data(points)
@@ -264,8 +334,7 @@
             enter
               .append('text')
               .attr('font-size', '0px')
-              .attr('x', function (d) { return d.x - 3 + d.ux * 15; })
-              .attr('y', function (d) { return d.y + 6 + d.uy * 15; })
+              .call(positionText)
               .transition(t)
               .attr('font-size', '16px')
               .text(function (_, i) { return i; });
@@ -273,14 +342,7 @@
 
           function (update) { return update.call(function (update) { return update
                 .transition(t)
-                .attr(
-                  'x',
-                  function (d) { return d.x - 3 + d.ux * 15; }
-                )
-                .attr(
-                  'y',
-                  function (d) { return d.y + 6 + d.uy * 15; }
-                ); }
+                .call(positionText); }
             ); },
           function (exit) { return exit
               .transition(t)
@@ -335,7 +397,7 @@
               .remove(); }
         )
         .attr('stroke', color)
-        .attr('stroke-width', 2);
+        .attr('stroke-width', strokeWidth);
 
       selection
         .selectAll('path')
@@ -354,7 +416,7 @@
               )
               .attr('opacity', '0')
               .transition()
-              .delay(function (d, i) { return i * drawDelay; })
+              .delay(function (_, i) { return i * drawDelay; })
               .attr(
                 'stroke-dasharray',
                 function (d) { return d.dist + ' ' + d.dist; }
@@ -376,12 +438,20 @@
           function (update) {
             update.call(function (update) {
               update
-                .transition(t)
-                .attr('d', function (d) { return pointLine([d.p1, d.p2]); }
+                .attr(
+                  'stroke-dasharray',
+                  null
                 )
+                .attr(
+                  'stroke-dashoffset',
+                  null
+                )
+                .transition(t)
                 .attr(
                   'stroke',
                   function (d) { return interp((d.start_idx / interiorEdges.length)); }
+                )
+                .attr('d', function (d) { return pointLine([d.p1, d.p2]); }
                 );
             });
           },
@@ -417,18 +487,6 @@
         : radius;
     };
 
-    my.xOffset = function (_) {
-      return arguments.length
-        ? ((xOffset = _), my)
-        : xOffset;
-    };
-
-    my.yOffset = function (_) {
-      return arguments.length
-        ? ((yOffset = _), my)
-        : yOffset;
-    };
-
     my.pointSize = function (_) {
       return arguments.length
         ? ((pointSize = _), my)
@@ -442,8 +500,15 @@
     };
 
     my.N = function (_) {
+      this.reset();
       return arguments.length ? (
         (N = _), my) : N;
+    };
+
+    my.reset = function() {
+      lastEdges = null;
+      codeword = [];
+      return my;
     };
 
     my.margin = function (_) {
@@ -579,6 +644,7 @@
   // https://gist.github.com/mbostock/1125997
   // https://observablehq.com/@mbostock/scrubber
   // https://stackoverflow.com/questions/23048263/pausing-and-resuming-a-transition
+
   var margin = {
     top: 20,
     right: 30,
@@ -613,9 +679,14 @@
   var height =
     window.innerHeight - margin.top - margin.bottom;
 
-  // const title = select('body')
+
+  d3$1.select('body')
+    .append('h1')
+    .text("Rotational Hamiltonian Trees");
+
+  // const original = select('body')
   //   .append('h3')
-  //   .text(`Original: ${codeword}`);
+  //   .text(`Original: ${"WIP"}`);
 
   var codewordHeader = d3$1.select('body')
     .append('h3')
@@ -632,21 +703,20 @@
 
   var NMenu = menuContainer.append('div');
   var codewordMenu = menuContainer.append('div');
+  var startAnimationButton = menuContainer.append(
+    'div'
+  );
   var restartDrawButton = menuContainer.append(
     'div'
   );
 
-  var startAnimationButton = menuContainer.append(
-    'div'
-  );
+
   var radius = 100;
   var pointSize = 4;
 
   var color = 'black';
   var pointColor = 'black';
   var interp = d3["interpolateViridis"];
-
-  console.log(codewords);
 
   // const decLast = (codeword) => {
   //   let N = codeword.length - 1;
@@ -694,7 +764,9 @@
         var parsedCodeword = [];
         if (cw != 'none') {
           parsedCodeword = cw.split(',');
-        } 
+        } else {
+          poly.reset();
+        }
         clearInterval(animationInter);
         svg.call(poly.codeword(parsedCodeword));
         codewordHeader.text(("Codeword: " + parsedCodeword));
@@ -711,7 +783,6 @@
         var options = createCodewordOptions(cws);
         d3$1.select("#codeword-menu").property("selectedIndex", -1);
         codewordMenu.call(cw.options(options));
-        poly.codeword([]);
         clearInterval(animationInter);
         svg.call(poly.N(n));
         codewordHeader.text(("Codeword: " + ([])));
@@ -725,7 +796,7 @@
         // const colormap = poly.colorMap();
 
         clearInterval(animationInter);
-        svg.call(poly.codeword([]));
+        svg.call(poly.reset());
 
         //   .call(
         //   poly.updateInteriorEdges(before, colormap)
@@ -737,9 +808,6 @@
       .id('start-button')
       .on('click', function (_) {
         playAnimation(poly);
-        //   .call(
-        //   poly.updateInteriorEdges(before, colormap)
-        // );
       });
 
     var poly = polygon()
@@ -751,7 +819,7 @@
       .strokeWidth(2)
       .color(color)
       .margin(margin)
-      .drawDelay(200)
+      .drawDelay(500)
       .transDuration(1000)
       .interp(interp)
       .on('end', function (_) {
