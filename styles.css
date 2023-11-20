@@ -1,0 +1,17 @@
+body {
+  margin: 0;
+  overflow: hidden;
+}
+text {
+  font-size: 24px;
+  font-family: 'Share Tech', sans-serif;
+}
+
+.menu-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around; 
+}

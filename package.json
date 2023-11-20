@@ -1,0 +1,10 @@
+{
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c --bundleConfigAsCj"
+  },
+  "devDependencies": {
+    "rollup": "latest",
+    "@rollup/plugin-buble": "latest"
+  }
+}
