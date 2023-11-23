@@ -1,11 +1,12 @@
-import { select } from 'd3';
-import getCodeWords from './codeword';
-import { polygon } from './polygon';
-import { menu } from './menu';
-import { button } from './button';
+import { select } from "d3";
+import getCodeWords from "./codeword";
+import { polygon } from "./polygon";
+import { menu } from "./menu";
+import { button } from "./button";
 // https://gist.github.com/mbostock/1125997
 // https://observablehq.com/@mbostock/scrubber
 // https://stackoverflow.com/questions/23048263/pausing-and-resuming-a-transition
+// http://www.ams.org/publicoutreach/feature-column/fcarc-associahedra
 
 const margin = {
   top: 20,
@@ -26,62 +27,52 @@ const mapCodewords = (cws) =>
 const createCodewordOptions = (cws) => {
   const noneOption = [
     {
-      value: 'none',
-      text: 'None',
+      value: "none",
+      text: "None",
     },
   ];
-  const options = noneOption.concat(
-    mapCodewords(cws)
-  );
+  const options = noneOption.concat(mapCodewords(cws));
   return options;
 };
 
 let codeword = [];
 
-const width =
-  window.innerWidth - margin.left - margin.right;
-const height =
-  window.innerHeight - margin.top - margin.bottom;
+const width = window.innerWidth - margin.left - margin.right;
+const height = window.innerHeight - margin.top - margin.bottom;
 
-
-const title = select('body')
-  .append('h1')
-  .text(`Rotational Hamiltonian Trees`);
+const title = select("body").append("h1").text(`Rotational Hamiltonian Trees`);
 
 // const original = select('body')
 //   .append('h3')
 //   .text(`Original: ${"WIP"}`);
 
-const codewordHeader = select('body')
-  .append('h3')
+const codewordHeader = select("body")
+  .append("h3")
   .text(`Codeword: ${codeword}`);
 
-const menuContainer = select('body')
-  .append('div')
-  .attr('class', 'menu-container');
+const menuContainer = select("body")
+  .append("div")
+  .attr("class", "menu-container");
 
-const svg = select('body')
-  .append('svg')
-  .attr('width', width)
-  .attr('height', height);
+const svg = select("body")
+  .append("svg")
+  .attr("width", width)
+  .attr("height", height);
 
-const NMenu = menuContainer.append('div');
-const codewordMenu = menuContainer.append('div');
-const startAnimationButton = menuContainer.append(
-  'div'
-);
-const restartDrawButton = menuContainer.append(
-  'div'
-);
-
+const NMenu = menuContainer.append("div");
+const codewordMenu = menuContainer.append("div");
+const startAnimationButton = menuContainer.append("div");
+const restartDrawButton = menuContainer.append("div");
 
 const radius = 100;
 const pointSize = 4;
 
-const color = 'black';
-const pointColor = 'black';
-const interp = d3["interpolateViridis"]
+const color = "black";
+const pointColor = "black";
+const interp = d3["interpolateViridis"];
+const treeInterp = d3["interpolateBuPu"];
 
+// interpolateYlOrRd
 // const decLast = (codeword) => {
 //   let N = codeword.length - 1;
 //   while (N >= 0) {
@@ -98,22 +89,21 @@ const NOptions = d3.range(4, 12).map((n) => ({
   text: n,
 }));
 
-let animationInter = null
-
+let animationInter = null;
 
 let index = 0;
 function playAnimation(poly) {
-  clearInterval(animationInter)
-  index = 0
+  clearInterval(animationInter);
+  index = 0;
   animationInter = setInterval(() => {
     if (index >= codewords.length) {
-      index = 0
-      clearInterval(animationInter)
+      index = 0;
+      clearInterval(animationInter);
     } else {
-      let cw = codewords[index]
-      svg.call(poly.codeword(cw))
-      select("#codeword-menu").property("selectedIndex", index + 1)
-      codewordHeader.text(`Codeword: ${cw}`)
+      let cw = codewords[index];
+      svg.call(poly.codeword(cw));
+      select("#codeword-menu").property("selectedIndex", index + 1);
+      codewordHeader.text(`Codeword: ${cw}`);
       index += 1;
     }
   }, 1000);
@@ -121,45 +111,44 @@ function playAnimation(poly) {
 
 function main() {
   const cw = menu()
-    .id('codeword-menu')
-    .labelText('Codeword:')
+    .id("codeword-menu")
+    .labelText("Codeword:")
     .options(createCodewordOptions(codewords))
-    .on('change', (cw) => {
-      let parsedCodeword = []
-      if (cw != 'none') {
-        parsedCodeword = cw.split(',');
+    .on("change", (cw) => {
+      let parsedCodeword = [];
+      if (cw != "none") {
+        parsedCodeword = cw.split(",");
       } else {
-        poly.reset()
+        poly.reset();
       }
-      clearInterval(animationInter)
+      clearInterval(animationInter);
       svg.call(poly.codeword(parsedCodeword));
       codewordHeader.text(`Codeword: ${parsedCodeword}`);
-      
     });
-    
+
   const nChoiceMenu = menu()
-    .id('n-menu')
-    .labelText('N:')
+    .id("n-menu")
+    .labelText("N:")
     .options(NOptions)
-    .on('change', (n) => {
+    .on("change", (n) => {
       const cws = getCodeWords(n - 2);
-      codewords = cws
+      codewords = cws;
       const options = createCodewordOptions(cws);
-      select("#codeword-menu").property("selectedIndex", -1)
+      select("#codeword-menu").property("selectedIndex", -1);
       codewordMenu.call(cw.options(options));
-      clearInterval(animationInter)
-      svg.call(poly.N(n))
-      codewordHeader.text(`Codeword: ${[]}`)
+      clearInterval(animationInter);
+      svg.call(poly.N(n));
+      codewordHeader.text(`Codeword: ${[]}`);
     });
 
   const restartButton = button()
-    .labelText('Restart')
-    .id('restart-button')
-    .on('click', (_) => {
+    .labelText("Restart")
+    .id("restart-button")
+    .on("click", (_) => {
       // const before = poly.interiorEdges();
       // const colormap = poly.colorMap();
 
-      clearInterval(animationInter)
+      clearInterval(animationInter);
       svg.call(poly.reset());
 
       //   .call(
@@ -168,9 +157,9 @@ function main() {
     });
 
   const startButton = button()
-    .labelText('Start anim')
-    .id('start-button')
-    .on('click', (_) => {
+    .labelText("Start anim")
+    .id("start-button")
+    .on("click", (_) => {
       playAnimation(poly);
     });
 
@@ -186,14 +175,15 @@ function main() {
     .drawDelay(500)
     .transDuration(1000)
     .interp(interp)
-    .on('end', (_) => {
+    .treeInterp(treeInterp)
+    .on("end", (_) => {
       // decLast(codeword);
       // codewordHeader.text(
       //   `Codeword: ${codeword}`
       // );
       // codewordHeader.call(setText, cw)
-  });
-  
+    });
+
   startAnimationButton.call(startButton);
   restartDrawButton.call(restartButton);
 
