@@ -54,18 +54,6 @@ export const createPolygonEdges = (points) => {
   return edges;
 };
 
-class Node {
-  constructor(name) {
-    this.name = name;
-    this.parent = null;
-    this.left = null;
-    this.right = null;
-  }
-}
-
-// public bool isLeft(Point a, Point b, Point c) {
-//   return (b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x) > 0;
-// }
 export const createTriangles = (codeword, polygonEdges, interiorEdges) => {
   if (!interiorEdges.length) return { solution: [], maxDepth: 1 };
 
@@ -131,28 +119,16 @@ export const createTriangles = (codeword, polygonEdges, interiorEdges) => {
         while (tri.length < 3) {
           let e = edgeStack.pop();
           nodes[JSON.stringify(e)].parent = JSON.stringify([point, ind]);
-          // if (!JSON.stringify([point, ind]) in nodes) {
-          //   nodes[JSON.stringify([point, ind])] = {}
-          //   nodes[JSON.stringify([point, ind])].left = null
-          //   nodes[JSON.stringify([point, ind])].right = null
-          //   nodes[JSON.stringify([point, ind])].parent = null
-          // }
-
           if (nodes[JSON.stringify([point, ind])].left) {
             nodes[JSON.stringify([point, ind])].right = JSON.stringify(e);
           } else {
             nodes[JSON.stringify([point, ind])].left = JSON.stringify(e);
           }
-          // parents[JSON.stringify(e)] = JSON.stringify([point, ind])
           tri.push(e);
         }
         triangles.push(tri);
 
         edgeStack.push([point, ind]);
-        // console.log(JSON.stringify(edgeStack), "STACK")
-        // console.log(JSON.stringify(tri), "TRI")
-        // console.log(parents)
-        // console.log(nodes, "NODES")
       }
       edgePoint++;
     }

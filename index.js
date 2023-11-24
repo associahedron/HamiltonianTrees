@@ -1,5 +1,5 @@
 import { select } from "d3";
-import getCodeWords from "./codeword";
+import { getCodeWords } from "./codeword";
 import { polygon } from "./polygon";
 import { menu } from "./menu";
 import { button } from "./button";
@@ -42,10 +42,6 @@ const height = window.innerHeight - margin.top - margin.bottom;
 
 const title = select("body").append("h1").text(`Rotational Hamiltonian Trees`);
 
-// const original = select('body')
-//   .append('h3')
-//   .text(`Original: ${"WIP"}`);
-
 const codewordHeader = select("body")
   .append("h3")
   .text(`Codeword: ${codeword}`);
@@ -73,16 +69,6 @@ const interp = d3["interpolateViridis"];
 const treeInterp = d3["interpolateBuPu"];
 
 // interpolateYlOrRd
-// const decLast = (codeword) => {
-//   let N = codeword.length - 1;
-//   while (N >= 0) {
-//     if (codeword[N] > 0) {
-//       codeword[N] -= 1;
-//       break;
-//     }
-//     N -= 1;
-//   }
-// };
 
 const NOptions = d3.range(4, 12).map((n) => ({
   value: n,
@@ -107,6 +93,12 @@ function playAnimation(poly) {
       index += 1;
     }
   }, 1000);
+}
+
+const toggle = (disable) => {
+  select("#codeword-menu").property("disabled", disable);
+  select("#n-menu").property("disabled", disable);
+  select("#start-button").property("disabled", disable);
 }
 
 function main() {
@@ -145,15 +137,8 @@ function main() {
     .labelText("Restart")
     .id("restart-button")
     .on("click", (_) => {
-      // const before = poly.interiorEdges();
-      // const colormap = poly.colorMap();
-
       clearInterval(animationInter);
       svg.call(poly.reset());
-
-      //   .call(
-      //   poly.updateInteriorEdges(before, colormap)
-      // );
     });
 
   const startButton = button()
@@ -176,13 +161,11 @@ function main() {
     .transDuration(1000)
     .interp(interp)
     .treeInterp(treeInterp)
-    .on("end", (_) => {
-      // decLast(codeword);
-      // codewordHeader.text(
-      //   `Codeword: ${codeword}`
-      // );
-      // codewordHeader.call(setText, cw)
-    });
+    .dash("3, 2")
+    .fontSize("16px")
+    .on("animstart", (_) => toggle(true))
+    .on("animend", (_) => toggle(false));
+
 
   startAnimationButton.call(startButton);
   restartDrawButton.call(restartButton);

@@ -141,9 +141,6 @@
     return edges;
   };
 
-  // public bool isLeft(Point a, Point b, Point c) {
-  //   return (b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x) > 0;
-  // }
   var createTriangles = function (codeword, polygonEdges, interiorEdges) {
     if (!interiorEdges.length) { return { solution: [], maxDepth: 1 }; }
 
@@ -208,19 +205,11 @@
           while (tri.length < 3) {
             var e = edgeStack.pop();
             nodes[JSON.stringify(e)].parent = JSON.stringify([point, ind]);
-            // if (!JSON.stringify([point, ind]) in nodes) {
-            //   nodes[JSON.stringify([point, ind])] = {}
-            //   nodes[JSON.stringify([point, ind])].left = null
-            //   nodes[JSON.stringify([point, ind])].right = null
-            //   nodes[JSON.stringify([point, ind])].parent = null
-            // }
-
             if (nodes[JSON.stringify([point, ind])].left) {
               nodes[JSON.stringify([point, ind])].right = JSON.stringify(e);
             } else {
               nodes[JSON.stringify([point, ind])].left = JSON.stringify(e);
             }
-            // parents[JSON.stringify(e)] = JSON.stringify([point, ind])
             tri.push(e);
           }
 
@@ -421,6 +410,8 @@
     var margin;
     var transDuration;
     var strokeWidth;
+    var dash;
+    var fontSize;
 
     var drawDelay;
 
@@ -429,7 +420,9 @@
     var interp;
     var treeInterp;
 
-    var listeners = d3$1.dispatch("end");
+    var finishedAnimating = true;
+
+    var listeners = d3$1.dispatch("animstart", "animend");
 
     var my = function (selection) {
       var points = createPolygonPoints(N, radius, margin.left, margin.top);
@@ -463,14 +456,6 @@
           .attr("y2", function (d) { return d.p2.y; });
       };
 
-      // const positionMidpoint = (lines) => {
-      //   lines
-      //     .attr('x1', (d) => d.p1.x)
-      //     .attr('y1', (d) => d.p1.y)
-      //     .attr('x2', (d) => d.p2.x)
-      //     .attr('y2', (d) => d.p2.y)
-      // };
-
       var initializeRadius = function (circles) {
         circles.attr("r", 0);
       };
@@ -496,17 +481,30 @@
           .attr("y", function (d) { return d.y + 6 + d.uy * 15; });
       };
 
+      var calculateDashArr = function (edge) {
+        var dashLength = dash
+          .split(/[\s,]/)
+          .map(function (a) { return parseFloat(a) || 0; })
+          .reduce(function (a, b) { return a + b; });
+
+        var dashCount = Math.ceil(edge.dist / dashLength);
+        var newDashes = new Array(dashCount).join(dash + " ");
+        var dashArray = newDashes + " 0, " + edge.dist;
+        return dashArray;
+      };
+
       selection
-        .selectAll("text")
+        .selectAll(".vertex-label")
         .data(points)
         .join(
           function (enter) {
             enter
               .append("text")
+              .attr("class", "vertex-label")
               .attr("font-size", "0px")
               .call(positionText)
               .transition(t)
-              .attr("font-size", "16px")
+              .attr("font-size", fontSize)
               .text(function (_, i) { return i; });
           },
 
@@ -519,12 +517,12 @@
 
       selection
         .selectAll(".root")
-        .data([polygonEdges[polygonEdges.length - 1].midpoint])
+        .data([polygonEdges[N - 1].midpoint])
         .join(
           function (enter) { return enter
               .append("circle")
               .attr("class", "root")
-              .call(enterCircles, interp(0)); },
+              .call(enterCircles, interp(pointColor)); },
 
           function (update) { return update.call(function (update) { return update.transition(t).call(positionCircles); }); },
           function (exit) { return exit.transition(t).call(initializeRadius).remove(); }
@@ -551,11 +549,19 @@
               .attr("class", "polygon-lines")
               .attr("stroke-opacity", "0.0")
               .transition(t)
+              .on("start", function () { listeners.call("animstart", null); finishedAnimating = false; })
+              .on("end", function () {
+                listeners.call("animend", null);
+              })
               .attr("stroke-opacity", "1.0")
               .call(positionLines); },
           function (update) { return update.call(function (update) { return update.transition(t).call(positionLines); }); },
           function (exit) { return exit
               .transition(t)
+              .on("start", function () { listeners.call("animstart", null); })
+              .on("end", function () {
+                listeners.call("animend", null);
+              })
               .attr("stroke-opacity", "0.0")
               .attr("x1", function (_) { return 0; })
               .attr("y1", function (_) { return 0; })
@@ -577,55 +583,36 @@
               .attr("stroke-width", strokeWidth)
               .attr("d", function (d) { return pointLine([d.p1, d.p2]); })
               .attr("stroke", function (d) { return treeInterp(d.depth / maxDepth); })
-              .attr("opacity", "0")
+              .attr("opacity", "0.0")
               .transition()
-              .delay(function (_, i) { return i * drawDelay; })
-              .attr("stroke-dasharray", function (d) {
-                // NOTE: THIS IMPLEMENTATION IS FROM https://www.visualcinnamon.com/2016/01/animating-dashed-line-d3/
-                //Create a (random) dash pattern
-                //The first number specifies the length of the visible part, the dash
-                //The second number specifies the length of the invisible part
-                var dashing = "6, 6";
-
-                //This returns the length of adding all of the numbers in dashing
-                //(the length of one pattern in essence)
-                //So for "6,6", for example, that would return 6+6 = 12
-                var dashLength = dashing
-                  .split(/[\s,]/)
-                  .map(function (a) {
-                    return parseFloat(a) || 0;
-                  })
-                  .reduce(function (a, b) {
-                    return a + b;
-                  });
-
-                //How many of these dash patterns will fit inside the entire path?
-                var dashCount = Math.ceil(d.dist / dashLength);
-
-                //Create an array that holds the pattern as often
-                //so it will fill the entire path
-                var newDashes = new Array(dashCount).join(dashing + " ");
-                //Then add one more dash pattern, namely with a visible part
-                //of length 0 (so nothing) and a white part
-                //that is the same length as the entire path
-                var dashArray = newDashes + " 0, " + d.dist;
-                return dashArray;
-              })
+              .delay(
+                function (d, _) { return interiorEdges.length * drawDelay + d.depth * drawDelay; }
+              )
+              // .on("end", (event) => {
+              //   listeners.call("interioredgedraw", null);
+              // })
+              .attr("stroke-dasharray", function (d) { return calculateDashArr(d); })
               .attr("stroke-dashoffset", function (d) { return d.dist; })
               .transition()
+
               .attr("stroke-opacity", "1.0")
               .duration(1000)
-              .attr("opacity", "1")
-              .on("end", function (event) {
-                listeners.call("end", null);
-              })
-              .attr("stroke-dashoffset", 0);
+              .attr("opacity", "1.0")
+              .attr("stroke-dashoffset", 0)
+              .end()
+              .then(function () {
+                listeners.call("animend", null);
+                finishedAnimating = true;
+              });
+              // .catch(() => {
+              //   listeners.call("animend", null);
+              // })
           },
 
           function (update) {
             update.call(function (update) {
               update
-                .attr("stroke-dasharray", "6, 6")
+                .attr("stroke-dasharray", dash)
                 .attr("stroke-dashoffset", null)
                 .transition(t)
                 .attr("stroke", function (d) { return treeInterp(d.depth / maxDepth); })
@@ -658,16 +645,18 @@
               .attr("stroke", function (d) { return interp(d.start_idx / interiorEdges.length); })
               .attr("opacity", "0")
               .transition()
+              .on("start", function () { listeners.call("animstart", null); })
               .delay(function (_, i) { return i * drawDelay; })
+              .on("end", function (_) {
+                console.log("draw edge");
+                // listeners.call("end", null);
+              })
               .attr("stroke-dasharray", function (d) { return d.dist + " " + d.dist; })
               .attr("stroke-dashoffset", function (d) { return d.dist; })
               .transition()
               .attr("stroke-opacity", "1.0")
               .duration(1000)
               .attr("opacity", "1")
-              .on("end", function (event) {
-                listeners.call("end", null);
-              })
               .attr("stroke-dashoffset", 0);
           },
 
@@ -718,10 +707,7 @@
           function (update) { return update.call(function (update) { return update
                 .transition(t)
                 .call(positionCircles)
-                .attr("fill", function (d) {
-                  console.log(d);
-                  return interp(d.start_idx / interiorEdges.length);
-                }); }
+                .attr("fill", function (d) { return interp(d.start_idx / interiorEdges.length); }); }
             ); },
           function (exit) { return exit.transition(t).call(initializeRadius).remove(); }
         );
@@ -758,12 +744,24 @@
       return my;
     };
 
+    my.finishedAnimating = function () {
+      return finishedAnimating;
+    };
+
     my.margin = function (_) {
       return arguments.length ? ((margin = _), my) : margin;
     };
 
     my.strokeWidth = function (_) {
       return arguments.length ? ((strokeWidth = _), my) : strokeWidth;
+    };
+
+    my.dash = function (_) {
+      return arguments.length ? ((dash = _), my) : dash;
+    };
+
+    my.fontSize = function (_) {
+      return arguments.length ? ((fontSize = _), my) : fontSize;
     };
 
     my.interp = function (_) {
@@ -982,6 +980,12 @@
     }, 1000);
   }
 
+  var toggle = function (disable) {
+    d3$1.select("#codeword-menu").property("disabled", disable);
+    d3$1.select("#n-menu").property("disabled", disable);
+    d3$1.select("#start-button").property("disabled", disable);
+  };
+
   function main() {
     var cw = menu()
       .id("codeword-menu")
@@ -1004,6 +1008,7 @@
       .labelText("N:")
       .options(NOptions)
       .on("change", function (n) {
+        console.log(poly.finishedAnimating(), "HEREE");
         var cws = getCodeWords(n - 2);
         codewords = cws;
         var options = createCodewordOptions(cws);
@@ -1049,13 +1054,18 @@
       .transDuration(1000)
       .interp(interp)
       .treeInterp(treeInterp)
-      .on("end", function (_) {
+      .dash("3, 2")
+      .fontSize("16px")
+      // .on("interioredgedraw", (_) => {
         // decLast(codeword);
         // codewordHeader.text(
         //   `Codeword: ${codeword}`
         // );
         // codewordHeader.call(setText, cw)
-      });
+      // })
+      .on("animstart", function (_) { return toggle(true); })
+      .on("animend", function (_) { return toggle(false); });
+
 
     startAnimationButton.call(startButton);
     restartDrawButton.call(restartButton);

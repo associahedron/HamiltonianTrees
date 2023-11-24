@@ -4,7 +4,7 @@
     "build": "rollup -c --bundleConfigAsCj"
   },
   "devDependencies": {
-    "rollup": "latest",
-    "@rollup/plugin-buble": "latest"
+    "@rollup/plugin-buble": "latest",
+    "rollup": "latest"
   }
 }

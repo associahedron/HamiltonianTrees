@@ -66,6 +66,8 @@ export const polygon = () => {
   let margin;
   let transDuration;
   let strokeWidth;
+  let dash;
+  let fontSize;
 
   let drawDelay;
 
@@ -74,7 +76,7 @@ export const polygon = () => {
   let interp;
   let treeInterp;
 
-  const listeners = dispatch("end");
+  const listeners = dispatch("animstart", "animend");
 
   const my = (selection) => {
     let points = createPolygonPoints(N, radius, margin.left, margin.top);
@@ -108,14 +110,6 @@ export const polygon = () => {
         .attr("y2", (d) => d.p2.y);
     };
 
-    // const positionMidpoint = (lines) => {
-    //   lines
-    //     .attr('x1', (d) => d.p1.x)
-    //     .attr('y1', (d) => d.p1.y)
-    //     .attr('x2', (d) => d.p2.x)
-    //     .attr('y2', (d) => d.p2.y)
-    // };
-
     const initializeRadius = (circles) => {
       circles.attr("r", 0);
     };
@@ -141,17 +135,30 @@ export const polygon = () => {
         .attr("y", (d) => d.y + 6 + d.uy * 15);
     };
 
+    const calculateDashArr = (edge) => {
+      let dashLength = dash
+        .split(/[\s,]/)
+        .map((a) => parseFloat(a) || 0)
+        .reduce((a, b) => a + b);
+
+      let dashCount = Math.ceil(edge.dist / dashLength);
+      let newDashes = new Array(dashCount).join(dash + " ");
+      let dashArray = newDashes + " 0, " + edge.dist;
+      return dashArray;
+    };
+
     selection
-      .selectAll("text")
+      .selectAll(".vertex-label")
       .data(points)
       .join(
         (enter) => {
           enter
             .append("text")
+            .attr("class", "vertex-label")
             .attr("font-size", "0px")
             .call(positionText)
             .transition(t)
-            .attr("font-size", "16px")
+            .attr("font-size", fontSize)
             .text((_, i) => i);
         },
 
@@ -165,13 +172,13 @@ export const polygon = () => {
 
     selection
       .selectAll(".root")
-      .data([polygonEdges[polygonEdges.length - 1].midpoint])
+      .data([polygonEdges[N - 1].midpoint])
       .join(
         (enter) =>
           enter
             .append("circle")
             .attr("class", "root")
-            .call(enterCircles, interp(0)),
+            .call(enterCircles, interp(pointColor)),
 
         (update) =>
           update.call((update) => update.transition(t).call(positionCircles)),
@@ -202,6 +209,10 @@ export const polygon = () => {
             .attr("class", "polygon-lines")
             .attr("stroke-opacity", "0.0")
             .transition(t)
+            .on("start", () => { listeners.call("animstart", null); finishedAnimating = false })
+            .on("end", () => {
+              listeners.call("animend", null);
+            })
             .attr("stroke-opacity", "1.0")
             .call(positionLines),
         (update) =>
@@ -209,6 +220,10 @@ export const polygon = () => {
         (exit) =>
           exit
             .transition(t)
+            .on("start", () => { listeners.call("animstart", null) })
+            .on("end", () => {
+              listeners.call("animend", null);
+            })
             .attr("stroke-opacity", "0.0")
             .attr("x1", (_) => 0)
             .attr("y1", (_) => 0)
@@ -230,55 +245,36 @@ export const polygon = () => {
             .attr("stroke-width", strokeWidth)
             .attr("d", (d) => pointLine([d.p1, d.p2]))
             .attr("stroke", (d) => treeInterp(d.depth / maxDepth))
-            .attr("opacity", "0")
+            .attr("opacity", "0.0")
             .transition()
-            .delay((_, i) => i * drawDelay)
-            .attr("stroke-dasharray", (d) => {
-              // NOTE: THIS IMPLEMENTATION IS FROM https://www.visualcinnamon.com/2016/01/animating-dashed-line-d3/
-              //Create a (random) dash pattern
-              //The first number specifies the length of the visible part, the dash
-              //The second number specifies the length of the invisible part
-              var dashing = "6, 6";
-
-              //This returns the length of adding all of the numbers in dashing
-              //(the length of one pattern in essence)
-              //So for "6,6", for example, that would return 6+6 = 12
-              var dashLength = dashing
-                .split(/[\s,]/)
-                .map(function (a) {
-                  return parseFloat(a) || 0;
-                })
-                .reduce(function (a, b) {
-                  return a + b;
-                });
-
-              //How many of these dash patterns will fit inside the entire path?
-              var dashCount = Math.ceil(d.dist / dashLength);
-
-              //Create an array that holds the pattern as often
-              //so it will fill the entire path
-              var newDashes = new Array(dashCount).join(dashing + " ");
-              //Then add one more dash pattern, namely with a visible part
-              //of length 0 (so nothing) and a white part
-              //that is the same length as the entire path
-              var dashArray = newDashes + " 0, " + d.dist;
-              return dashArray;
-            })
+            .delay(
+              (d, _) => interiorEdges.length * drawDelay + d.depth * drawDelay
+            )
+            // .on("end", (event) => {
+            //   listeners.call("interioredgedraw", null);
+            // })
+            .attr("stroke-dasharray", (d) => calculateDashArr(d))
             .attr("stroke-dashoffset", (d) => d.dist)
             .transition()
+
             .attr("stroke-opacity", "1.0")
             .duration(1000)
-            .attr("opacity", "1")
-            .on("end", (event) => {
-              listeners.call("end", null);
+            .attr("opacity", "1.0")
+            .attr("stroke-dashoffset", 0)
+            .end()
+            .then(() => {
+              listeners.call("animend", null);
+              finishedAnimating = true
             })
-            .attr("stroke-dashoffset", 0);
+            // .catch(() => {
+            //   listeners.call("animend", null);
+            // })
         },
 
         (update) => {
           update.call((update) => {
             update
-              .attr("stroke-dasharray", "6, 6")
+              .attr("stroke-dasharray", dash)
               .attr("stroke-dashoffset", null)
               .transition(t)
               .attr("stroke", (d) => treeInterp(d.depth / maxDepth))
@@ -311,16 +307,18 @@ export const polygon = () => {
             .attr("stroke", (d) => interp(d.start_idx / interiorEdges.length))
             .attr("opacity", "0")
             .transition()
+            .on("start", () => { listeners.call("animstart", null) })
             .delay((_, i) => i * drawDelay)
+            // .on("end", (_) => {
+            //   console.log("draw edge")
+              // listeners.call("end", null);
+            // })
             .attr("stroke-dasharray", (d) => d.dist + " " + d.dist)
             .attr("stroke-dashoffset", (d) => d.dist)
             .transition()
             .attr("stroke-opacity", "1.0")
             .duration(1000)
             .attr("opacity", "1")
-            .on("end", (event) => {
-              listeners.call("end", null);
-            })
             .attr("stroke-dashoffset", 0);
         },
 
@@ -374,10 +372,7 @@ export const polygon = () => {
             update
               .transition(t)
               .call(positionCircles)
-              .attr("fill", (d) => {
-                console.log(d);
-                return interp(d.start_idx / interiorEdges.length);
-              })
+              .attr("fill", (d) => interp(d.start_idx / interiorEdges.length))
           ),
         (exit) => exit.transition(t).call(initializeRadius).remove()
       );
@@ -420,6 +415,14 @@ export const polygon = () => {
 
   my.strokeWidth = function (_) {
     return arguments.length ? ((strokeWidth = _), my) : strokeWidth;
+  };
+
+  my.dash = function (_) {
+    return arguments.length ? ((dash = _), my) : dash;
+  };
+
+  my.fontSize = function (_) {
+    return arguments.length ? ((fontSize = _), my) : fontSize;
   };
 
   my.interp = function (_) {

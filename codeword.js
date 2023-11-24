@@ -2,7 +2,7 @@
  * @param {number} n  N-polygon sides
  * @return {number[][]} All valid codewords for an N-polygon
  */
-export default function getCodeWords(n) {
+export function getCodeWords(n) {
   const UP = 0;
   const DOWN = 1;
 
