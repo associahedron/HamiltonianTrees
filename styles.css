@@ -15,3 +15,12 @@ text {
   display: flex;
   justify-content: space-around; 
 }
+
+.tree {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around; 
+}

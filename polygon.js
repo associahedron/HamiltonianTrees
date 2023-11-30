@@ -16,7 +16,13 @@ import {
  * @return {Object[]} All valid codewords for an N-polygon
  */
 const positionEdges = (e1, e2) => {
+
   if (e1 == null || e1.length == 0) return e2;
+  // console.log("CALLED")
+  // console.log(JSON.stringify(e1.map(d => ("" + d.start_idx + d.end_idx))), "PREVIOUS")
+
+  // console.log(123456789)
+  // console.log(JSON.stringify(e2.map(d => ("" + d.start_idx + d.end_idx))), "CURRENT")
 
   let new_res = new Array(e1.length).fill(-1);
   let numbers = Array.from(Array(e1.length).keys());
@@ -46,6 +52,8 @@ const positionEdges = (e1, e2) => {
     }
   }
 
+  // console.log(count, "HEREEEEE")
+
   if (count > 1) return e2;
 
   let keys = unusedIndex.keys();
@@ -53,6 +61,8 @@ const positionEdges = (e1, e2) => {
 
   new_res[value] = unused;
 
+  console.log(JSON.stringify(new_res.map(d => ("" + d.start_idx + d.end_idx))), "RESULT")
+  // console.log(JSON.stringify(new_res), "CHECK ME")
   return new_res;
 };
 
@@ -76,6 +86,9 @@ export const polygon = () => {
   let interp;
   let treeInterp;
 
+  let nodes;
+  let treePath = [];
+
   const listeners = dispatch("animstart", "animend");
 
   const my = (selection) => {
@@ -88,12 +101,14 @@ export const polygon = () => {
       interiorEdges = positionEdges(lastEdges, interiorEdges);
     }
 
-    let treePath = [];
+    treePath = []
+
     let maxDepth = 1;
     if (interiorEdges) {
       let treeInfo = createTriangles(codeword, polygonEdges, interiorEdges);
       treePath = treeInfo.solution;
       maxDepth = treeInfo.maxDepth;
+      nodes = treeInfo.nodes
     }
 
     lastEdges = interiorEdges;
@@ -147,6 +162,14 @@ export const polygon = () => {
       return dashArray;
     };
 
+    const exitLines = (lines) => {
+      lines
+        .attr("x1", (_) => 0)
+        .attr("y1", (_) => 0)
+        .attr("x2", (_) => 0)
+        .attr("y2", (_) => 0)
+    }
+
     selection
       .selectAll(".vertex-label")
       .data(points)
@@ -167,7 +190,7 @@ export const polygon = () => {
         (exit) => exit.transition(t).attr("font-size", "0px").remove()
       )
       .transition(t)
-      .attr("opacity", "1")
+      .attr("opacity", "1.0")
       .text((_, i) => i);
 
     selection
@@ -209,7 +232,7 @@ export const polygon = () => {
             .attr("class", "polygon-lines")
             .attr("stroke-opacity", "0.0")
             .transition(t)
-            .on("start", () => { listeners.call("animstart", null); finishedAnimating = false })
+            .on("start", () => { listeners.call("animstart", null);  })
             .on("end", () => {
               listeners.call("animend", null);
             })
@@ -225,10 +248,7 @@ export const polygon = () => {
               listeners.call("animend", null);
             })
             .attr("stroke-opacity", "0.0")
-            .attr("x1", (_) => 0)
-            .attr("y1", (_) => 0)
-            .attr("x2", (_) => 0)
-            .attr("y2", (_) => 0)
+            .call(exitLines)
             .remove()
       )
       .attr("stroke", color)
@@ -244,7 +264,7 @@ export const polygon = () => {
             .attr("class", "tree-path")
             .attr("stroke-width", strokeWidth)
             .attr("d", (d) => pointLine([d.p1, d.p2]))
-            .attr("stroke", (d) => treeInterp(d.depth / maxDepth))
+            .attr("stroke", (d) => treeInterp(1-(d.depth / 11)))
             .attr("opacity", "0.0")
             .transition()
             .delay(
@@ -264,7 +284,7 @@ export const polygon = () => {
             .end()
             .then(() => {
               listeners.call("animend", null);
-              finishedAnimating = true
+              // finishedAnimating = true
             })
             // .catch(() => {
             //   listeners.call("animend", null);
@@ -277,7 +297,7 @@ export const polygon = () => {
               .attr("stroke-dasharray", dash)
               .attr("stroke-dashoffset", null)
               .transition(t)
-              .attr("stroke", (d) => treeInterp(d.depth / maxDepth))
+              .attr("stroke", (d) => treeInterp(1-(d.depth / 11)))
               .attr("d", (d) => pointLine([d.p1, d.p2]));
           });
         },
@@ -286,10 +306,7 @@ export const polygon = () => {
           exit
             .transition(t)
             .attr("stroke-opacity", "0.0")
-            .attr("x1", 0)
-            .attr("y1", 0)
-            .attr("x2", 0)
-            .attr("y2", 0)
+            .call(exitLines)
             .remove();
         }
       );
@@ -305,7 +322,7 @@ export const polygon = () => {
             .attr("stroke-width", strokeWidth)
             .attr("d", (d) => pointLine([d.p1, d.p2]))
             .attr("stroke", (d) => interp(d.start_idx / interiorEdges.length))
-            .attr("opacity", "0")
+            .attr("opacity", "0.0")
             .transition()
             .on("start", () => { listeners.call("animstart", null) })
             .delay((_, i) => i * drawDelay)
@@ -337,10 +354,7 @@ export const polygon = () => {
           exit
             .transition(t)
             .attr("stroke-opacity", "0.0")
-            .attr("x1", 0)
-            .attr("y1", 0)
-            .attr("x2", 0)
-            .attr("y2", 0)
+            .call(exitLines)
             .remove();
         }
       );
@@ -365,7 +379,6 @@ export const polygon = () => {
             .call(initializeRadius)
             .transition(t)
             .attr("r", pointSize)
-            // .call(enterCircles, "black")
             .attr("fill", (d) => interp(d.start_idx / interiorEdges.length)),
         (update) =>
           update.call((update) =>
@@ -445,6 +458,19 @@ export const polygon = () => {
     var value = listeners.on.apply(listeners, arguments);
     return value === listeners ? my : value;
   };
+
+  my.nodes = function() {
+    if (nodes) {
+      return nodes
+    } else {
+      return []
+    }
+  }
+
+  my.treePath = function() {
+    return treePath
+  }
+
 
   return my;
 };

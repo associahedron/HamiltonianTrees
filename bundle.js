@@ -98,6 +98,7 @@
       dist: dist,
       start_idx: start,
       end_idx: end,
+      getKey: function () { return (start + "," + end); },
       depth: depth,
     };
   };
@@ -146,16 +147,21 @@
 
     var interiorMap = {};
 
-    for (var i = 0; i < interiorEdges.length; i++) {
-      var edge = interiorEdges[i];
-      interiorMap[JSON.stringify([edge.start_idx, edge.end_idx])] = edge;
-      interiorMap[JSON.stringify([polygonEdges.length - 1, 0])] =
-        polygonEdges[polygonEdges.length - 1];
-    }
-
-    // console.log(interiorMap, "NEW MAP")
-
     var N = polygonEdges.length;
+    var interiorN = interiorEdges.length;
+
+    var rootKey = (N - 1) + ",0";
+
+    for (var i = 0; i < interiorN; i++) {
+      var edge = interiorEdges[i];
+      var key = edge.getKey();
+      interiorMap[key] = edge;
+    }
+    interiorMap[rootKey] = polygonEdges[N - 1];
+
+    var formatKey = function (start, end) {
+      return (start + "," + end)
+    };
     var getWrapIndex = function (idx) { return idx % N; };
     var fillCrossings = function (crossings, start, end) {
       for (var i = start + 1; i < end; i++) {
@@ -164,11 +170,10 @@
     };
 
     var nodes = {};
-    // let interiorEdgeUseCount = {}
 
     var crossings = new Array(N).fill(false);
     var polyEdgesUsed = new Array(N).fill(false);
-    var used = new Set(d3.range(N));
+    var used = new Set(d3$1.range(N));
 
     var edgeStack = [];
     var startIndex = codeword.length - 1;
@@ -186,13 +191,16 @@
           code--;
           fillCrossings(crossings, point, edgePoint);
 
-          nodes[JSON.stringify([point, ind])] = {};
-          nodes[JSON.stringify([point, ind])].left = null;
-          nodes[JSON.stringify([point, ind])].right = null;
-          nodes[JSON.stringify([point, ind])].parent = null;
-          nodes[JSON.stringify([point, ind])].depth = 0;
+          var node = {};
+          node.left = null;
+          node.right = null;
+          node.parent = null;
+          node.depth = 0;
+          var key$1 = formatKey(point, ind);
+          node.value = key$1;
+          nodes[key$1] = node;
 
-          var checkRange = d3.range(point, edgePoint).map(function (e) { return getWrapIndex(e); });
+          var checkRange = d3$1.range(point, edgePoint).map(function (e) { return getWrapIndex(e); });
           for (var j = 0; j < checkRange.length; j++) {
             var edge$1 = checkRange[j];
             if (!polyEdgesUsed[edge$1]) {
@@ -204,59 +212,54 @@
 
           while (tri.length < 3) {
             var e = edgeStack.pop();
-            nodes[JSON.stringify(e)].parent = JSON.stringify([point, ind]);
-            if (nodes[JSON.stringify([point, ind])].left) {
-              nodes[JSON.stringify([point, ind])].right = JSON.stringify(e);
+            var childKey = formatKey(e[0], e[1]);
+            var parentKey = formatKey(point, ind);
+            nodes[childKey].parent = parentKey;
+            
+            if (point == e[0]) {
+              nodes[parentKey].left = childKey;
             } else {
-              nodes[JSON.stringify([point, ind])].left = JSON.stringify(e);
+              nodes[parentKey].right = childKey;
             }
             tri.push(e);
           }
 
           edgeStack.push([point, ind]);
-          // console.log(JSON.stringify(edgeStack), "STACK")
-          // console.log(JSON.stringify(tri), "TRI")
-          // console.log(parents)
-          // console.log(nodes, "NODES")
         }
         edgePoint++;
       }
     }
 
-    nodes[JSON.stringify([polygonEdges.length - 1, 0])] = {};
-    nodes[JSON.stringify([polygonEdges.length - 1, 0])].left = null;
-    nodes[JSON.stringify([polygonEdges.length - 1, 0])].right = null;
-    nodes[JSON.stringify([polygonEdges.length - 1, 0])].parent = null;
-    nodes[JSON.stringify([polygonEdges.length - 1, 0])].depth = 0;
+    var rootNode = {};
+    rootNode.left = null;
+    rootNode.right = null;
+    rootNode.parent = null;
+    rootNode.value = rootKey;
+    rootNode.depth = 0;
+    nodes[rootKey] = rootNode;
     while (edgeStack.length) {
       var e$1 = edgeStack.pop();
-      nodes[JSON.stringify(e$1)].parent = JSON.stringify([
-        polygonEdges.length - 1,
-        0 ]);
+      var childKey$1 = formatKey(e$1[0], e$1[1]);
+      var parentKey$1 = rootKey;
 
-      if (nodes[JSON.stringify([polygonEdges.length - 1, 0])].left) {
-        nodes[JSON.stringify([polygonEdges.length - 1, 0])].right =
-          JSON.stringify(e$1);
+      nodes[childKey$1].parent = parentKey$1;
+
+      if (0 == e$1[0]) {
+        nodes[rootKey].left = childKey$1;
       } else {
-        nodes[JSON.stringify([polygonEdges.length - 1, 0])].left =
-          JSON.stringify(e$1);
+        nodes[rootKey].right = childKey$1;
       }
     }
 
-    // console.log(JSON.stringify(used.size), "used111")
-
-    // let unique = used.values()
-
     used.forEach(function (value) {
     });
-    // console.log(JSON.stringify(lastTriangle), "LAST")
-    // console.log(triangles, "ALL TRIANGLES")
 
     var solution = [];
-    var start = JSON.stringify([polygonEdges.length - 1, 0]);
+    var start = rootKey;
 
     var maxDepth = 1;
 
+    // TODO CHECK THE LEFT AND RIGHT
     function bfs() {
       var queue = [start];
       while (queue.length > 0) {
@@ -299,9 +302,7 @@
     }
 
     bfs();
-    // console.log(solution, "SOLUTION")
-
-    return { solution: solution, maxDepth: maxDepth };
+    return { solution: solution, maxDepth: maxDepth, nodes: nodes };
   };
 
   var getCodewordEdges = function (points, codeword) {
@@ -356,7 +357,13 @@
    * @return {Object[]} All valid codewords for an N-polygon
    */
   var positionEdges = function (e1, e2) {
+
     if (e1 == null || e1.length == 0) { return e2; }
+    console.log("CALLED");
+    console.log(JSON.stringify(e1.map(function (d) { return ("" + d.start_idx + d.end_idx); })), "PREVIOUS");
+
+    console.log(123456789);
+    console.log(JSON.stringify(e2.map(function (d) { return ("" + d.start_idx + d.end_idx); })), "CURRENT");
 
     var new_res = new Array(e1.length).fill(-1);
     var numbers = Array.from(Array(e1.length).keys());
@@ -390,6 +397,8 @@
       }
     }
 
+    console.log(count, "HEREEEEE");
+
     if (count > 1) { return e2; }
 
     var keys = unusedIndex.keys();
@@ -397,6 +406,8 @@
 
     new_res[value] = unused;
 
+    console.log(JSON.stringify(new_res.map(function (d) { return ("" + d.start_idx + d.end_idx); })), "RESULT");
+    // console.log(JSON.stringify(new_res), "CHECK ME")
     return new_res;
   };
 
@@ -420,7 +431,8 @@
     var interp;
     var treeInterp;
 
-    var finishedAnimating = true;
+    var nodes;
+    var treePath = [];
 
     var listeners = d3$1.dispatch("animstart", "animend");
 
@@ -434,12 +446,12 @@
         interiorEdges = positionEdges(lastEdges, interiorEdges);
       }
 
-      var treePath = [];
-      var maxDepth = 1;
+      treePath = [];
       if (interiorEdges) {
         var treeInfo = createTriangles(codeword, polygonEdges, interiorEdges);
         treePath = treeInfo.solution;
-        maxDepth = treeInfo.maxDepth;
+        treeInfo.maxDepth;
+        nodes = treeInfo.nodes;
       }
 
       lastEdges = interiorEdges;
@@ -493,6 +505,14 @@
         return dashArray;
       };
 
+      var exitLines = function (lines) {
+        lines
+          .attr("x1", function (_) { return 0; })
+          .attr("y1", function (_) { return 0; })
+          .attr("x2", function (_) { return 0; })
+          .attr("y2", function (_) { return 0; });
+      };
+
       selection
         .selectAll(".vertex-label")
         .data(points)
@@ -512,7 +532,7 @@
           function (exit) { return exit.transition(t).attr("font-size", "0px").remove(); }
         )
         .transition(t)
-        .attr("opacity", "1")
+        .attr("opacity", "1.0")
         .text(function (_, i) { return i; });
 
       selection
@@ -549,7 +569,7 @@
               .attr("class", "polygon-lines")
               .attr("stroke-opacity", "0.0")
               .transition(t)
-              .on("start", function () { listeners.call("animstart", null); finishedAnimating = false; })
+              .on("start", function () { listeners.call("animstart", null);  })
               .on("end", function () {
                 listeners.call("animend", null);
               })
@@ -563,10 +583,7 @@
                 listeners.call("animend", null);
               })
               .attr("stroke-opacity", "0.0")
-              .attr("x1", function (_) { return 0; })
-              .attr("y1", function (_) { return 0; })
-              .attr("x2", function (_) { return 0; })
-              .attr("y2", function (_) { return 0; })
+              .call(exitLines)
               .remove(); }
         )
         .attr("stroke", color)
@@ -582,7 +599,7 @@
               .attr("class", "tree-path")
               .attr("stroke-width", strokeWidth)
               .attr("d", function (d) { return pointLine([d.p1, d.p2]); })
-              .attr("stroke", function (d) { return treeInterp(d.depth / maxDepth); })
+              .attr("stroke", function (d) { return treeInterp(1-(d.depth / 11)); })
               .attr("opacity", "0.0")
               .transition()
               .delay(
@@ -602,7 +619,7 @@
               .end()
               .then(function () {
                 listeners.call("animend", null);
-                finishedAnimating = true;
+                // finishedAnimating = true
               });
               // .catch(() => {
               //   listeners.call("animend", null);
@@ -615,7 +632,7 @@
                 .attr("stroke-dasharray", dash)
                 .attr("stroke-dashoffset", null)
                 .transition(t)
-                .attr("stroke", function (d) { return treeInterp(d.depth / maxDepth); })
+                .attr("stroke", function (d) { return treeInterp(1-(d.depth / 11)); })
                 .attr("d", function (d) { return pointLine([d.p1, d.p2]); });
             });
           },
@@ -624,10 +641,7 @@
             exit
               .transition(t)
               .attr("stroke-opacity", "0.0")
-              .attr("x1", 0)
-              .attr("y1", 0)
-              .attr("x2", 0)
-              .attr("y2", 0)
+              .call(exitLines)
               .remove();
           }
         );
@@ -643,14 +657,14 @@
               .attr("stroke-width", strokeWidth)
               .attr("d", function (d) { return pointLine([d.p1, d.p2]); })
               .attr("stroke", function (d) { return interp(d.start_idx / interiorEdges.length); })
-              .attr("opacity", "0")
+              .attr("opacity", "0.0")
               .transition()
               .on("start", function () { listeners.call("animstart", null); })
               .delay(function (_, i) { return i * drawDelay; })
-              .on("end", function (_) {
-                console.log("draw edge");
+              // .on("end", (_) => {
+              //   console.log("draw edge")
                 // listeners.call("end", null);
-              })
+              // })
               .attr("stroke-dasharray", function (d) { return d.dist + " " + d.dist; })
               .attr("stroke-dashoffset", function (d) { return d.dist; })
               .transition()
@@ -675,10 +689,7 @@
             exit
               .transition(t)
               .attr("stroke-opacity", "0.0")
-              .attr("x1", 0)
-              .attr("y1", 0)
-              .attr("x2", 0)
-              .attr("y2", 0)
+              .call(exitLines)
               .remove();
           }
         );
@@ -702,7 +713,6 @@
               .call(initializeRadius)
               .transition(t)
               .attr("r", pointSize)
-              // .call(enterCircles, "black")
               .attr("fill", function (d) { return interp(d.start_idx / interiorEdges.length); }); },
           function (update) { return update.call(function (update) { return update
                 .transition(t)
@@ -744,10 +754,6 @@
       return my;
     };
 
-    my.finishedAnimating = function () {
-      return finishedAnimating;
-    };
-
     my.margin = function (_) {
       return arguments.length ? ((margin = _), my) : margin;
     };
@@ -784,6 +790,19 @@
       var value = listeners.on.apply(listeners, arguments);
       return value === listeners ? my : value;
     };
+
+    my.nodes = function() {
+      if (nodes) {
+        return nodes
+      } else {
+        return []
+      }
+    };
+
+    my.treePath = function() {
+      return treePath
+    };
+
 
     return my;
   };
@@ -876,6 +895,204 @@
     return my;
   };
 
+  var tree = function () {
+    var width;
+    var height;
+    var margin; 
+    var nodes; // Dictionary of nodes 
+    var transDuration;
+    var treeInterp;
+    var interp;
+    var points;
+    var maxXTransform;
+    var nodeSize;
+    
+
+
+
+    // let id;
+    // let labelText;
+    // const listeners = dispatch('click');
+    
+    var my = function (selection) {
+      var t = d3$1.transition().duration(transDuration);
+      var tree = d3.tree().size([width, height]).separation(function (a, b) {
+        return (a.parent == b.parent ? 1 : 2) / a.depth;
+      });
+
+      // let color = 
+      var initializeRadius = function (circles) {
+        circles.attr("r", 0);
+      };
+
+      var positionCircles = function (circles) {
+        circles.attr("cx", function (d) { return d.x; }).attr("cy", function (d) { return d.y; });
+      };
+
+      var rootKey = (Object.keys(nodes).length + 1) + ",0";
+
+      var links = [];
+      var n = [];
+      if (nodes && rootKey in nodes) {
+        var root = d3.hierarchy(nodes[rootKey], function (d) {
+          d.children = [];
+          if (d.left) {
+            d.children.push(nodes[d.left]); 
+          }
+          if (d.right) {
+            d.children.push(nodes[d.right]);
+          }
+          return d.children
+        });
+        root.x0 = width / 2;
+        root.y0 = 0;
+        var treeData = tree(root);
+        n = treeData.descendants();
+        links = treeData.descendants().slice(1); 
+        treeData.height;
+
+        var s = {};
+        links[0].parent.x -= 150;
+        links[0].parent.y += 20;
+
+        for (var i = 0; i < links.length; i++) {
+          var currLink = links[i];
+          s[currLink.value] = currLink.x;
+          
+          if (currLink.parent.value in s) {
+            currLink.parent.value = s[currLink.parent.value];
+          }
+
+          if (currLink.parent.data.left == currLink.data.value) {
+            currLink.x = currLink.parent.x - maxXTransform * (1 / currLink.depth);
+          } else {
+            currLink.x = currLink.parent.x + maxXTransform * (1 / currLink.depth);
+          }
+
+          s[currLink.value] = currLink.x;
+        }
+      }
+
+      selection
+        .selectAll('line.link')
+        .data(links)
+        .join(
+          function (enter) {
+            enter
+              .append('line')
+              .attr('class', 'link')
+              .attr('data-value', function (d) { return d.data.value; } )
+              .attr('stroke-width', 2)
+              .attr('x1', 0)
+              .attr('y1', 0)
+              .attr('x2', 0)
+              .attr('y2', 0)
+              .transition(t)
+              .attr('x1', function (d) { return d.parent.x; })
+              .attr('y1', function (d) { return d.parent.y; })
+              .attr('x2', function (d) { return d.x; })
+              .attr('y2', function (d) { return d.y; })
+              .attr("stroke", function (d) { return treeInterp(1-(d.depth / 11)); });
+          },
+          function (update) {
+            update
+              .transition(t)
+                .attr('x1', function (d) { return d.parent.x; })
+                .attr('y1', function (d) { return d.parent.y; })
+                .attr('x2', function (d) { return d.x; })
+                .attr('y2', function (d) { return d.y; })
+                .attr("stroke", function (d) { return treeInterp(1-(d.depth / 11)); });
+          }, 
+          function (exit) {
+            exit
+              .transition(t)
+              .attr("stroke-width", "0.0")
+              // .call(exitLines)
+              .remove();
+              // .attr('stroke-width', 0)
+              // .remove()
+          }
+        );  
+        selection
+        .selectAll(".real-tree-node")
+        .data(n)
+        .join(
+          function (enter) { return enter
+              .append("circle")
+              .attr('data-value', function (d) { return d.data.value; })
+              .attr("class", "real-tree-node")
+              .attr("opacity", "0.0")
+              .attr("fill", function (d, i) { return interp(i == 0 ? 0 : +d.data.value.split(",")[0] / (n.length - 1)); })
+              // .delay((_, i) => i * drawDelay)
+              .call(initializeRadius)
+              .transition(t)
+              .call(positionCircles)
+              .attr("r", nodeSize)
+              .attr("opacity", "1.0"); },
+          function (update) { return update.call(function (update) { return update
+                .transition(t)
+                .call(positionCircles)
+                .attr("fill", function (d, i) { return interp(i == 0 ? 0 : +d.data.value.split(",")[0] / (n.length - 1)); }); }
+            ); },
+          function (exit) { return exit.transition(t).call(initializeRadius).remove(); }
+        );    
+    };
+
+    my.width = function (_) {
+      return arguments.length ? ((width = _), my) : width;
+    };
+
+    my.height = function (_) {
+      return arguments.length ? ((height = _), my) : height;
+    };
+
+    my.margin = function (_) {
+      return arguments.length ? ((margin = _), my) : margin;
+    };
+
+    my.nodes = function (_) {
+      return arguments.length ? ((nodes = _), my) : nodes;
+    };
+
+    my.transDuration = function (_) {
+      return arguments.length ? ((transDuration = _), my) : transDuration;
+    };
+    
+    my.interp = function (_) {
+      return arguments.length ? ((interp = _), my) : interp;
+    };
+
+    my.treeInterp = function (_) {
+      return arguments.length ? ((treeInterp = _), my) : treeInterp;
+    };
+
+    my.points = function (_) {
+      return arguments.length ? ((points = _), my) : points;
+    };
+
+    my.reset = function () {
+      nodes = {};
+      points = [];
+      return my;
+    };
+
+    my.update = function(poly) {
+      nodes = poly.nodes();
+      points = poly.treePath();
+      return my
+    };
+
+    my.maxXTransform = function (_) {
+      return arguments.length ? ((maxXTransform = _), my) : maxXTransform;
+    };
+
+    my.nodeSize = function (_) {
+      return arguments.length ? ((nodeSize = _), my) : nodeSize;
+    };
+
+    return my;
+  };
+
   // https://gist.github.com/mbostock/1125997
   // https://observablehq.com/@mbostock/scrubber
   // https://stackoverflow.com/questions/23048263/pausing-and-resuming-a-transition
@@ -887,6 +1104,16 @@
     bottom: 7,
     left: 20,
   };
+
+  var treeMargin = {
+    top: 20,
+    right: 20,
+    bottom: 20,
+    left: 20,
+  };
+
+  var treeWidth = 600;
+  var treeHeight = 250;
 
   var N = 4;
   var codewords = getCodeWords(N - 2);
@@ -908,14 +1135,10 @@
 
   var codeword = [];
 
-  var width = window.innerWidth - margin.left - margin.right;
+  window.innerWidth - margin.left - margin.right;
   var height = window.innerHeight - margin.top - margin.bottom;
 
   d3$1.select("body").append("h1").text("Rotational Hamiltonian Trees");
-
-  // const original = select('body')
-  //   .append('h3')
-  //   .text(`Original: ${"WIP"}`);
 
   var codewordHeader = d3$1.select("body")
     .append("h3")
@@ -925,15 +1148,26 @@
     .append("div")
     .attr("class", "menu-container");
 
-  var svg = d3$1.select("body")
+  var polySvg = d3$1.select("body")
     .append("svg")
-    .attr("width", width)
-    .attr("height", height);
+    .attr("id", "polygon")
+    .attr("width", 250)
+    .attr("height", height - 400);
+
+  var treeSvg = d3$1.select("body")
+    .append("svg")
+    .attr("id", "tree")
+    .attr("width", 300)
+    .attr("height", height - 400);
 
   var NMenu = menuContainer.append("div");
   var codewordMenu = menuContainer.append("div");
   var startAnimationButton = menuContainer.append("div");
   var restartDrawButton = menuContainer.append("div");
+
+  d3$1.select("body")
+    .append("div")
+    .attr('class', "tree");
 
   var radius = 100;
   var pointSize = 4;
@@ -941,19 +1175,9 @@
   var color = "black";
   var pointColor = "black";
   var interp = d3["interpolateViridis"];
-  var treeInterp = d3["interpolateBuPu"];
+  var treeInterp = d3["interpolatePlasma"];
 
   // interpolateYlOrRd
-  // const decLast = (codeword) => {
-  //   let N = codeword.length - 1;
-  //   while (N >= 0) {
-  //     if (codeword[N] > 0) {
-  //       codeword[N] -= 1;
-  //       break;
-  //     }
-  //     N -= 1;
-  //   }
-  // };
 
   var NOptions = d3.range(4, 12).map(function (n) { return ({
     value: n,
@@ -963,7 +1187,7 @@
   var animationInter = null;
 
   var index = 0;
-  function playAnimation(poly) {
+  function playAnimation(poly, t) {
     clearInterval(animationInter);
     index = 0;
     animationInter = setInterval(function () {
@@ -972,7 +1196,8 @@
         clearInterval(animationInter);
       } else {
         var cw = codewords[index];
-        svg.call(poly.codeword(cw));
+        polySvg.call(poly.codeword(cw));
+        treeSvg.call(t.update(poly));
         d3$1.select("#codeword-menu").property("selectedIndex", index + 1);
         codewordHeader.text(("Codeword: " + cw));
         index += 1;
@@ -985,6 +1210,7 @@
     d3$1.select("#n-menu").property("disabled", disable);
     d3$1.select("#start-button").property("disabled", disable);
   };
+
 
   function main() {
     var cw = menu()
@@ -999,8 +1225,14 @@
           poly.reset();
         }
         clearInterval(animationInter);
-        svg.call(poly.codeword(parsedCodeword));
+        polySvg.call(poly.codeword(parsedCodeword));
         codewordHeader.text(("Codeword: " + parsedCodeword));
+
+        if (cw != "none") {
+          treeSvg.call(t.update(poly));
+        } else {
+          treeSvg.call(t.reset());
+        }
       });
 
     var nChoiceMenu = menu()
@@ -1008,37 +1240,31 @@
       .labelText("N:")
       .options(NOptions)
       .on("change", function (n) {
-        console.log(poly.finishedAnimating(), "HEREE");
         var cws = getCodeWords(n - 2);
         codewords = cws;
         var options = createCodewordOptions(cws);
         d3$1.select("#codeword-menu").property("selectedIndex", -1);
         codewordMenu.call(cw.options(options));
         clearInterval(animationInter);
-        svg.call(poly.N(n));
+        polySvg.call(poly.N(n));
         codewordHeader.text(("Codeword: " + ([])));
+        treeSvg.call(t.update(poly));
       });
 
     var restartButton = button()
       .labelText("Restart")
       .id("restart-button")
       .on("click", function (_) {
-        // const before = poly.interiorEdges();
-        // const colormap = poly.colorMap();
-
         clearInterval(animationInter);
-        svg.call(poly.reset());
-
-        //   .call(
-        //   poly.updateInteriorEdges(before, colormap)
-        // );
+        polySvg.call(poly.reset());
+        treeSvg.call(t.reset());
       });
 
     var startButton = button()
       .labelText("Start anim")
       .id("start-button")
       .on("click", function (_) {
-        playAnimation(poly);
+        playAnimation(poly, t);
       });
 
     var poly = polygon()
@@ -1050,29 +1276,32 @@
       .strokeWidth(2)
       .color(color)
       .margin(margin)
-      .drawDelay(500)
+      .drawDelay(100)
       .transDuration(1000)
       .interp(interp)
       .treeInterp(treeInterp)
       .dash("3, 2")
       .fontSize("16px")
-      // .on("interioredgedraw", (_) => {
-        // decLast(codeword);
-        // codewordHeader.text(
-        //   `Codeword: ${codeword}`
-        // );
-        // codewordHeader.call(setText, cw)
-      // })
       .on("animstart", function (_) { return toggle(true); })
       .on("animend", function (_) { return toggle(false); });
 
-
     startAnimationButton.call(startButton);
-    restartDrawButton.call(restartButton);
-
+    restartDrawButton.call(restartButton);  
     codewordMenu.call(cw);
-    svg.call(poly);
+    polySvg.call(poly);
     NMenu.call(nChoiceMenu);
+
+    var t = tree()
+      .width(treeWidth)
+      .height(treeHeight)
+      .nodes({})
+      .margin(treeMargin)
+      .transDuration(1000)
+      .interp(interp)
+      .treeInterp(treeInterp)
+      .maxXTransform(50)
+      .nodeSize(4);
+    treeSvg.call(t);
   }
 
   main();

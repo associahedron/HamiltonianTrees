@@ -1,3 +1,5 @@
+import { range } from 'd3'
+
 const createEdge = (p1, p2, start, end, depth = -1) => {
   let x = (p1.x + p2.x) / 2;
   let y = (p1.y + p2.y) / 2;
@@ -11,6 +13,7 @@ const createEdge = (p1, p2, start, end, depth = -1) => {
     dist,
     start_idx: start,
     end_idx: end,
+    getKey: () => `${start},${end}`,
     depth,
   };
 };
@@ -59,16 +62,21 @@ export const createTriangles = (codeword, polygonEdges, interiorEdges) => {
 
   let interiorMap = {};
 
-  for (let i = 0; i < interiorEdges.length; i++) {
-    let edge = interiorEdges[i];
-    interiorMap[JSON.stringify([edge.start_idx, edge.end_idx])] = edge;
-    interiorMap[JSON.stringify([polygonEdges.length - 1, 0])] =
-      polygonEdges[polygonEdges.length - 1];
-  }
-
-  // console.log(interiorMap, "NEW MAP")
-
   let N = polygonEdges.length;
+  let interiorN = interiorEdges.length;
+
+  let rootKey = `${N - 1},0`
+
+  for (let i = 0; i < interiorN; i++) {
+    let edge = interiorEdges[i];
+    let key = edge.getKey()
+    interiorMap[key] = edge;
+  }
+  interiorMap[rootKey] = polygonEdges[N - 1];
+
+  const formatKey = (start, end) => {
+    return `${start},${end}`
+  }
   const getWrapIndex = (idx) => idx % N;
   const fillCrossings = (crossings, start, end) => {
     for (let i = start + 1; i < end; i++) {
@@ -78,11 +86,10 @@ export const createTriangles = (codeword, polygonEdges, interiorEdges) => {
 
   let nodes = {};
   let triangles = [];
-  // let interiorEdgeUseCount = {}
 
   let crossings = new Array(N).fill(false);
   let polyEdgesUsed = new Array(N).fill(false);
-  let used = new Set(d3.range(N));
+  let used = new Set(range(N));
 
   let edgeStack = [];
   let startIndex = codeword.length - 1;
@@ -100,13 +107,16 @@ export const createTriangles = (codeword, polygonEdges, interiorEdges) => {
         code--;
         fillCrossings(crossings, point, edgePoint);
 
-        nodes[JSON.stringify([point, ind])] = {};
-        nodes[JSON.stringify([point, ind])].left = null;
-        nodes[JSON.stringify([point, ind])].right = null;
-        nodes[JSON.stringify([point, ind])].parent = null;
-        nodes[JSON.stringify([point, ind])].depth = 0;
+        let node = {}
+        node.left = null;
+        node.right = null;
+        node.parent = null;
+        node.depth = 0;
+        let key = formatKey(point, ind)
+        node.value = key;
+        nodes[key] = node;
 
-        let checkRange = d3.range(point, edgePoint).map((e) => getWrapIndex(e));
+        let checkRange = range(point, edgePoint).map((e) => getWrapIndex(e));
         for (let j = 0; j < checkRange.length; j++) {
           let edge = checkRange[j];
           if (!polyEdgesUsed[edge]) {
@@ -118,14 +128,18 @@ export const createTriangles = (codeword, polygonEdges, interiorEdges) => {
 
         while (tri.length < 3) {
           let e = edgeStack.pop();
-          nodes[JSON.stringify(e)].parent = JSON.stringify([point, ind]);
-          if (nodes[JSON.stringify([point, ind])].left) {
-            nodes[JSON.stringify([point, ind])].right = JSON.stringify(e);
+          let childKey = formatKey(e[0], e[1])
+          let parentKey = formatKey(point, ind)
+          nodes[childKey].parent = parentKey;
+          
+          if (point == e[0]) {
+            nodes[parentKey].left = childKey
           } else {
-            nodes[JSON.stringify([point, ind])].left = JSON.stringify(e);
+            nodes[parentKey].right = childKey;
           }
           tri.push(e);
         }
+
         triangles.push(tri);
 
         edgeStack.push([point, ind]);
@@ -134,48 +148,43 @@ export const createTriangles = (codeword, polygonEdges, interiorEdges) => {
     }
   }
 
-  nodes[JSON.stringify([polygonEdges.length - 1, 0])] = {};
-  nodes[JSON.stringify([polygonEdges.length - 1, 0])].left = null;
-  nodes[JSON.stringify([polygonEdges.length - 1, 0])].right = null;
-  nodes[JSON.stringify([polygonEdges.length - 1, 0])].parent = null;
-  nodes[JSON.stringify([polygonEdges.length - 1, 0])].depth = 0;
+  let rootNode = {}
+  rootNode.left = null;
+  rootNode.right = null;
+  rootNode.parent = null;
+  rootNode.value = rootKey;
+  rootNode.depth = 0;
+  nodes[rootKey] = rootNode;
 
   let lastTriangle = [];
   while (edgeStack.length) {
     let e = edgeStack.pop();
-    nodes[JSON.stringify(e)].parent = JSON.stringify([
-      polygonEdges.length - 1,
-      0,
-    ]);
+    let childKey = formatKey(e[0], e[1])
+    let parentKey = rootKey
 
-    if (nodes[JSON.stringify([polygonEdges.length - 1, 0])].left) {
-      nodes[JSON.stringify([polygonEdges.length - 1, 0])].right =
-        JSON.stringify(e);
+    nodes[childKey].parent = parentKey;
+
+    if (0 == e[0]) {
+      nodes[rootKey].left = childKey;
     } else {
-      nodes[JSON.stringify([polygonEdges.length - 1, 0])].left =
-        JSON.stringify(e);
+      nodes[rootKey].right = childKey;
     }
 
     lastTriangle.push(e);
   }
-
-  // console.log(JSON.stringify(used.size), "used111")
-
-  // let unique = used.values()
 
   used.forEach((value) => {
     lastTriangle.push([value, getWrapIndex(value + 1)]);
   });
 
   triangles.push(lastTriangle);
-  // console.log(JSON.stringify(lastTriangle), "LAST")
-  // console.log(triangles, "ALL TRIANGLES")
 
   let solution = [];
-  let start = JSON.stringify([polygonEdges.length - 1, 0]);
+  let start = rootKey;
 
   let maxDepth = 1;
 
+  // TODO CHECK THE LEFT AND RIGHT
   function bfs() {
     let queue = [start];
     while (queue.length > 0) {
@@ -218,9 +227,7 @@ export const createTriangles = (codeword, polygonEdges, interiorEdges) => {
   }
 
   bfs(nodes, start, 0, interiorMap);
-  // console.log(solution, "SOLUTION")
-
-  return { solution, maxDepth };
+  return { solution, maxDepth, nodes };
 };
 
 export const getCodewordEdges = (points, codeword) => {
