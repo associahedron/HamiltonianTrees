@@ -359,11 +359,11 @@
   var positionEdges = function (e1, e2) {
 
     if (e1 == null || e1.length == 0) { return e2; }
-    console.log("CALLED");
-    console.log(JSON.stringify(e1.map(function (d) { return ("" + d.start_idx + d.end_idx); })), "PREVIOUS");
+    // console.log("CALLED")
+    // console.log(JSON.stringify(e1.map(d => ("" + d.start_idx + d.end_idx))), "PREVIOUS")
 
-    console.log(123456789);
-    console.log(JSON.stringify(e2.map(function (d) { return ("" + d.start_idx + d.end_idx); })), "CURRENT");
+    // console.log(123456789)
+    // console.log(JSON.stringify(e2.map(d => ("" + d.start_idx + d.end_idx))), "CURRENT")
 
     var new_res = new Array(e1.length).fill(-1);
     var numbers = Array.from(Array(e1.length).keys());
@@ -397,7 +397,7 @@
       }
     }
 
-    console.log(count, "HEREEEEE");
+    // console.log(count, "HEREEEEE")
 
     if (count > 1) { return e2; }
 
@@ -860,6 +860,47 @@
     return my;
   };
 
+  var input = function () {
+    var id;
+    var labelText;
+    var listeners = d3$1.dispatch('confirm');
+    
+    var my = function (selection) {
+      selection
+        .selectAll('input')
+        .data([null])
+        .join('input')
+        .attr('id', id)
+        .on('keyup', function (e) {
+          if (e.key == "Enter") {
+            listeners.call('confirm', null, e.target.value);
+          } 
+        });
+
+        // .text(labelText)
+        // .on('click', () => {
+        //   listeners.call('click', null);
+        // })
+    };
+
+    my.id = function (_) {
+      return arguments.length ? ((id = _), my) : id;
+    };
+
+    my.labelText = function (_) {
+      return arguments.length
+        ? ((labelText = _), my)
+        : labelText;
+    };
+
+    my.on = function () {
+      var value = listeners.on.apply(listeners, arguments);
+      return value === listeners ? my : value;
+    };
+
+    return my;
+  };
+
   var button = function () {
     var id;
     var labelText;
@@ -1093,6 +1134,35 @@
     return my;
   };
 
+  // Lemma 1: (Valid Codewords) [Zerling]
+  function isValidCodeword(cw, n) {
+    var isValid = true;
+    var nums = cw.map(function (v) { return +v; });
+    for (var i = 1; i < n - 1; i++) {
+      var sum = 0;
+      for (var j = i + 1; j < n; j++) {
+        sum += nums[j];
+      } 
+      var wi = nums[i];
+      if (wi > n - i - sum) {
+        isValid = false;
+      }
+    }
+
+    var s = 0;
+    for (var j$1 = 1; j$1 < n; j$1++) {
+      s += nums[j$1];
+    } 
+
+    var w0 = nums[0];
+    if (w0 != n - 1 - s) {
+      isValid = false;
+    }
+
+    return isValid
+  }
+
+
   // https://gist.github.com/mbostock/1125997
   // https://observablehq.com/@mbostock/scrubber
   // https://stackoverflow.com/questions/23048263/pausing-and-resuming-a-transition
@@ -1164,6 +1234,8 @@
   var codewordMenu = menuContainer.append("div");
   var startAnimationButton = menuContainer.append("div");
   var restartDrawButton = menuContainer.append("div");
+  var codewordLabel = d3$1.select("div").append("label").text("Enter codeword: ");
+  var inputButton = menuContainer.append("div");
 
   d3$1.select("body")
     .append("div")
@@ -1227,6 +1299,7 @@
         clearInterval(animationInter);
         polySvg.call(poly.codeword(parsedCodeword));
         codewordHeader.text(("Codeword: " + parsedCodeword));
+        codewordLabel.text("Enter codeword: ").style("color", "black");
 
         if (cw != "none") {
           treeSvg.call(t.update(poly));
@@ -1249,6 +1322,7 @@
         polySvg.call(poly.N(n));
         codewordHeader.text(("Codeword: " + ([])));
         treeSvg.call(t.update(poly));
+        codewordLabel.text("Enter codeword: ").style("color", "black");
       });
 
     var restartButton = button()
@@ -1266,6 +1340,31 @@
       .on("click", function (_) {
         playAnimation(poly, t);
       });
+
+    var codewordInput = input()
+      // .labelText("Start anim")
+      .id("codeword-input")
+      .on("confirm", function (value) {
+        value = value.replaceAll(' ','');
+        var validationRegex = /^(\d+,)*\d+$/;
+        if (validationRegex.test(value)) {
+          var codeword = value.split(',');
+          var n = poly.N();
+          // TODO Check if it's a valid codeword...
+          if (codeword.length == n - 2 && isValidCodeword(codeword, n - 2)) {
+            clearInterval(animationInter);
+            polySvg.call(poly.codeword(codeword));
+            codewordHeader.text(("Codeword: " + codeword));
+            treeSvg.call(t.update(poly));
+            codewordLabel.text("Enter codeword: ").style("color", "black");
+          } else {
+          codewordLabel.text("Invalid codeword.").style("color", "red");
+          }
+        } else {
+          codewordLabel.text("Invalid input.").style("color", "red");
+        }
+      });
+
 
     var poly = polygon()
       .N(N)
@@ -1287,6 +1386,7 @@
 
     startAnimationButton.call(startButton);
     restartDrawButton.call(restartButton);  
+    inputButton.call(codewordInput);
     codewordMenu.call(cw);
     polySvg.call(poly);
     NMenu.call(nChoiceMenu);

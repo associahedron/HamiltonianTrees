@@ -2,8 +2,37 @@ import { select } from "d3";
 import { getCodeWords } from "./codeword";
 import { polygon } from "./polygon";
 import { menu } from "./menu";
+import { input } from "./input";
 import { button } from "./button";
 import { tree } from "./tree";
+
+// Lemma 1: (Valid Codewords) [Zerling]
+function isValidCodeword(cw, n) {
+  let isValid = true;
+  let nums = cw.map((v) => +v);
+  for (let i = 1; i < n - 1; i++) {
+    let sum = 0;
+    for (let j = i + 1; j < n; j++) {
+      sum += nums[j];
+    }
+    let wi = nums[i];
+    if (wi > n - i - sum) {
+      isValid = false;
+    }
+  }
+
+  let s = 0;
+  for (let j = 1; j < n; j++) {
+    s += nums[j];
+  }
+
+  let w0 = nums[0];
+  if (w0 != n - 1 - s) {
+    isValid = false;
+  }
+
+  return isValid;
+}
 
 // https://gist.github.com/mbostock/1125997
 // https://observablehq.com/@mbostock/scrubber
@@ -24,8 +53,8 @@ const treeMargin = {
   left: 20,
 };
 
-const treeWidth = 600
-const treeHeight = 250
+const treeWidth = 600;
+const treeHeight = 250;
 
 const N = 4;
 let codewords = getCodeWords(N - 2);
@@ -66,22 +95,22 @@ const polySvg = select("body")
   .append("svg")
   .attr("id", "polygon")
   .attr("width", 250)
-  .attr("height", height - 400)
+  .attr("height", height - 400);
 
 const treeSvg = select("body")
   .append("svg")
   .attr("id", "tree")
   .attr("width", 300)
-  .attr("height", height - 400)
+  .attr("height", height - 400);
 
 const NMenu = menuContainer.append("div");
 const codewordMenu = menuContainer.append("div");
 const startAnimationButton = menuContainer.append("div");
 const restartDrawButton = menuContainer.append("div");
+const codewordLabel = select("div").append("label").text("Enter codeword: ");
+const inputButton = menuContainer.append("div");
 
-const treeContainer = select("body")
-  .append("div")
-  .attr('class', "tree")
+const treeContainer = select("body").append("div").attr("class", "tree");
 
 const radius = 100;
 const pointSize = 4;
@@ -123,8 +152,7 @@ const toggle = (disable) => {
   select("#codeword-menu").property("disabled", disable);
   select("#n-menu").property("disabled", disable);
   select("#start-button").property("disabled", disable);
-}
-
+};
 
 function main() {
   const cw = menu()
@@ -133,7 +161,7 @@ function main() {
     .options(createCodewordOptions(codewords))
     .on("change", (cw) => {
       let parsedCodeword = [];
-      let newNodes = {}
+      let newNodes = {};
       if (cw != "none") {
         parsedCodeword = cw.split(",");
       } else {
@@ -142,11 +170,12 @@ function main() {
       clearInterval(animationInter);
       polySvg.call(poly.codeword(parsedCodeword));
       codewordHeader.text(`Codeword: ${parsedCodeword}`);
+      codewordLabel.text("Enter codeword: ").style("color", "black");
 
       if (cw != "none") {
         treeSvg.call(t.update(poly));
       } else {
-        treeSvg.call(t.reset())
+        treeSvg.call(t.reset());
       }
     });
 
@@ -164,6 +193,7 @@ function main() {
       polySvg.call(poly.N(n));
       codewordHeader.text(`Codeword: ${[]}`);
       treeSvg.call(t.update(poly));
+      codewordLabel.text("Enter codeword: ").style("color", "black");
     });
 
   const restartButton = button()
@@ -172,7 +202,7 @@ function main() {
     .on("click", (_) => {
       clearInterval(animationInter);
       polySvg.call(poly.reset());
-      treeSvg.call(t.reset())
+      treeSvg.call(t.reset());
     });
 
   const startButton = button()
@@ -180,6 +210,28 @@ function main() {
     .id("start-button")
     .on("click", (_) => {
       playAnimation(poly, t);
+    });
+
+  const codewordInput = input()
+    .id("codeword-input")
+    .on("confirm", (value) => {
+      value = value.replaceAll(" ", "");
+      const validationRegex = /^(\d+,)*\d+$/;
+      if (validationRegex.test(value)) {
+        const codeword = value.split(",");
+        const n = poly.N();
+        if (codeword.length == n - 2 && isValidCodeword(codeword, n - 2)) {
+          clearInterval(animationInter);
+          polySvg.call(poly.codeword(codeword));
+          codewordHeader.text(`Codeword: ${codeword}`);
+          treeSvg.call(t.update(poly));
+          codewordLabel.text("Enter codeword: ").style("color", "black");
+        } else {
+          codewordLabel.text("Invalid codeword.").style("color", "red");
+        }
+      } else {
+        codewordLabel.text("Invalid input.").style("color", "red");
+      }
     });
 
   const poly = polygon()
@@ -201,7 +253,8 @@ function main() {
     .on("animend", (_) => toggle(false));
 
   startAnimationButton.call(startButton);
-  restartDrawButton.call(restartButton);  
+  restartDrawButton.call(restartButton);
+  inputButton.call(codewordInput);
   codewordMenu.call(cw);
   polySvg.call(poly);
   NMenu.call(nChoiceMenu);
@@ -215,7 +268,7 @@ function main() {
     .interp(interp)
     .treeInterp(treeInterp)
     .maxXTransform(50)
-    .nodeSize(4)
+    .nodeSize(4);
   treeSvg.call(t);
 }
 
