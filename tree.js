@@ -11,13 +11,6 @@ export const tree = () => {
   let maxXTransform;
   let nodeSize;
   
-
-
-
-  // let id;
-  // let labelText;
-  // const listeners = dispatch('click');
-  
   const my = (selection) => {
     const t = transition().duration(transDuration);
     const tree = d3.tree().size([width, height]).separation((a, b) => {

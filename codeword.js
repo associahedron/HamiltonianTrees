@@ -79,3 +79,70 @@ export function getCodeWords(n) {
 
   return codeWordList;
 }
+// Implementation of Lemma 1: (Valid Codewords) [Zerling]
+// NOTE THAT THIS COULD BE MORE EFFICIENT...
+// Note that codeword should equal to n-gon sides - 2 (n)
+// Example: cw = [3, 0, 0, 0], n = 4
+// This is valid!
+export function isValidCodeword(cw, n) {
+  let isValid = true;
+  let nums = cw.map((v) => +v);
+  for (let i = 1; i < n - 1; i++) {
+    let sum = 0;
+    for (let j = i + 1; j < n; j++) {
+      sum += nums[j];
+    }
+    let wi = nums[i];
+    if (wi > n - i - sum) {
+      isValid = false;
+    }
+  }
+
+  let s = 0;
+  for (let j = 1; j < n; j++) {
+    s += nums[j];
+  }
+
+  let w0 = nums[0];
+  if (w0 != n - 1 - s) {
+    isValid = false;
+  }
+
+  return isValid;
+}
+
+console.log(getCodeWords(4))
+
+
+
+function isValidRotation(cw1, cw2) {
+
+
+  return 
+}
+
+// let codewords = getCodeWords(4)
+// console.log(JSON.stringify(codewords))
+
+
+function gather_stacks(codewords) {
+  console.log(getCodeWords(4))
+  let stacks = []
+  // let d = 0
+  
+  let height = 1
+  // console.log(cw)
+  for (let d = 0; d < 2; d++) {
+    for (let h = 1; h < 2; h++) {
+
+    }
+  }
+
+
+
+  return 
+}
+
+let codewords = getCodeWords(5)
+console.log(JSON.stringify(codewords))
+// gather_stacks(JSON.stringify(codewords))

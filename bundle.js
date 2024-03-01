@@ -82,6 +82,43 @@
 
     return codeWordList;
   }
+  // Implementation of Lemma 1: (Valid Codewords) [Zerling]
+  // NOTE THAT THIS COULD BE MORE EFFICIENT...
+  // Note that codeword should equal to n-gon sides - 2 (n)
+  // Example: cw = [3, 0, 0, 0], n = 4
+  // This is valid!
+  function isValidCodeword(cw, n) {
+    var isValid = true;
+    var nums = cw.map(function (v) { return +v; });
+    for (var i = 1; i < n - 1; i++) {
+      var sum = 0;
+      for (var j = i + 1; j < n; j++) {
+        sum += nums[j];
+      }
+      var wi = nums[i];
+      if (wi > n - i - sum) {
+        isValid = false;
+      }
+    }
+
+    var s = 0;
+    for (var j$1 = 1; j$1 < n; j$1++) {
+      s += nums[j$1];
+    }
+
+    var w0 = nums[0];
+    if (w0 != n - 1 - s) {
+      isValid = false;
+    }
+
+    return isValid;
+  }
+
+  console.log(getCodeWords(4));
+
+  var codewords$1 = getCodeWords(5);
+  console.log(JSON.stringify(codewords$1));
+  // gather_stacks(JSON.stringify(codewords))
 
   var createEdge = function (p1, p2, start, end, depth) {
     if ( depth === void 0 ) depth = -1;
@@ -862,35 +899,23 @@
 
   var input = function () {
     var id;
-    var labelText;
-    var listeners = d3$1.dispatch('confirm');
-    
+    var listeners = d3$1.dispatch("confirm");
+
     var my = function (selection) {
       selection
-        .selectAll('input')
+        .selectAll("input")
         .data([null])
-        .join('input')
-        .attr('id', id)
-        .on('keyup', function (e) {
+        .join("input")
+        .attr("id", id)
+        .on("keyup", function (e) {
           if (e.key == "Enter") {
-            listeners.call('confirm', null, e.target.value);
-          } 
+            listeners.call("confirm", null, e.target.value);
+          }
         });
-
-        // .text(labelText)
-        // .on('click', () => {
-        //   listeners.call('click', null);
-        // })
     };
 
     my.id = function (_) {
       return arguments.length ? ((id = _), my) : id;
-    };
-
-    my.labelText = function (_) {
-      return arguments.length
-        ? ((labelText = _), my)
-        : labelText;
     };
 
     my.on = function () {
@@ -947,13 +972,6 @@
     var points;
     var maxXTransform;
     var nodeSize;
-    
-
-
-
-    // let id;
-    // let labelText;
-    // const listeners = dispatch('click');
     
     var my = function (selection) {
       var t = d3$1.transition().duration(transDuration);
@@ -1134,35 +1152,6 @@
     return my;
   };
 
-  // Lemma 1: (Valid Codewords) [Zerling]
-  function isValidCodeword(cw, n) {
-    var isValid = true;
-    var nums = cw.map(function (v) { return +v; });
-    for (var i = 1; i < n - 1; i++) {
-      var sum = 0;
-      for (var j = i + 1; j < n; j++) {
-        sum += nums[j];
-      } 
-      var wi = nums[i];
-      if (wi > n - i - sum) {
-        isValid = false;
-      }
-    }
-
-    var s = 0;
-    for (var j$1 = 1; j$1 < n; j$1++) {
-      s += nums[j$1];
-    } 
-
-    var w0 = nums[0];
-    if (w0 != n - 1 - s) {
-      isValid = false;
-    }
-
-    return isValid
-  }
-
-
   // https://gist.github.com/mbostock/1125997
   // https://observablehq.com/@mbostock/scrubber
   // https://stackoverflow.com/questions/23048263/pausing-and-resuming-a-transition
@@ -1237,9 +1226,7 @@
   var codewordLabel = d3$1.select("div").append("label").text("Enter codeword: ");
   var inputButton = menuContainer.append("div");
 
-  d3$1.select("body")
-    .append("div")
-    .attr('class', "tree");
+  d3$1.select("body").append("div").attr("class", "tree");
 
   var radius = 100;
   var pointSize = 4;
@@ -1282,7 +1269,6 @@
     d3$1.select("#n-menu").property("disabled", disable);
     d3$1.select("#start-button").property("disabled", disable);
   };
-
 
   function main() {
     var cw = menu()
@@ -1342,15 +1328,13 @@
       });
 
     var codewordInput = input()
-      // .labelText("Start anim")
       .id("codeword-input")
       .on("confirm", function (value) {
-        value = value.replaceAll(' ','');
+        value = value.replaceAll(" ", "");
         var validationRegex = /^(\d+,)*\d+$/;
         if (validationRegex.test(value)) {
-          var codeword = value.split(',');
+          var codeword = value.split(",");
           var n = poly.N();
-          // TODO Check if it's a valid codeword...
           if (codeword.length == n - 2 && isValidCodeword(codeword, n - 2)) {
             clearInterval(animationInter);
             polySvg.call(poly.codeword(codeword));
@@ -1358,13 +1342,12 @@
             treeSvg.call(t.update(poly));
             codewordLabel.text("Enter codeword: ").style("color", "black");
           } else {
-          codewordLabel.text("Invalid codeword.").style("color", "red");
+            codewordLabel.text("Invalid codeword.").style("color", "red");
           }
         } else {
           codewordLabel.text("Invalid input.").style("color", "red");
         }
       });
-
 
     var poly = polygon()
       .N(N)
@@ -1385,7 +1368,7 @@
       .on("animend", function (_) { return toggle(false); });
 
     startAnimationButton.call(startButton);
-    restartDrawButton.call(restartButton);  
+    restartDrawButton.call(restartButton);
     inputButton.call(codewordInput);
     codewordMenu.call(cw);
     polySvg.call(poly);

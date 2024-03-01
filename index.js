@@ -1,38 +1,10 @@
 import { select } from "d3";
-import { getCodeWords } from "./codeword";
+import { getCodeWords, isValidCodeword } from "./codeword";
 import { polygon } from "./polygon";
 import { menu } from "./menu";
 import { input } from "./input";
 import { button } from "./button";
 import { tree } from "./tree";
-
-// Lemma 1: (Valid Codewords) [Zerling]
-function isValidCodeword(cw, n) {
-  let isValid = true;
-  let nums = cw.map((v) => +v);
-  for (let i = 1; i < n - 1; i++) {
-    let sum = 0;
-    for (let j = i + 1; j < n; j++) {
-      sum += nums[j];
-    }
-    let wi = nums[i];
-    if (wi > n - i - sum) {
-      isValid = false;
-    }
-  }
-
-  let s = 0;
-  for (let j = 1; j < n; j++) {
-    s += nums[j];
-  }
-
-  let w0 = nums[0];
-  if (w0 != n - 1 - s) {
-    isValid = false;
-  }
-
-  return isValid;
-}
 
 // https://gist.github.com/mbostock/1125997
 // https://observablehq.com/@mbostock/scrubber
