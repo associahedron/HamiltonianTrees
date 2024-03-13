@@ -114,12 +114,54 @@
     return isValid;
   }
 
-  console.log(getCodeWords(4));
+  var formatKey = function (start, end) {
+    return (start + "," + end)
+  };
 
-  var codewords$1 = getCodeWords(5);
-  console.log(JSON.stringify(codewords$1));
-  // gather_stacks(JSON.stringify(codewords))
+  var keyFromArr = function (arr) {
+    return arr.join(',')
+  };
 
+  var parseKey = function (key) {
+    return key.split(',').map(function (v) { return +v; })
+  };
+
+  var idxFunction = function (N) { return function (idx) { return idx % N; }; };
+
+  /**
+   * @typedef {Object} Point 
+   * @property {number} x
+   * @property {number} y
+   */
+
+  /**
+   * @typedef {Object} Edge 
+   * @property {Point} p1
+   * @property {Point} p2
+   * @property {Point} midpoint The midpoint of the edge
+   * @property {number} start_idx The index of p1 in the polygon
+   * @property {number} end_idx The index of p2 in the polygon
+   * @property {number} depth The depth of the edge in the tree
+   * @property {number} distance The distance between p1 and p2
+   * @property {() => string} getKey The key of edge using the start index and end index
+   */
+
+  /**
+   * @typedef {Object} Triangle 
+   * @property {Point} p1
+   * @property {Point} p2
+   * @property {Point} p3
+   * @property {() => Point} getCentroid
+   */
+
+  /**
+   * @param {Point} p1 
+   * @param {Point} p2
+   * @param {number} start The index of p1 in the polygon
+   * @param {number} end The index of p2 in the polygon
+   * @param {number} depth The depth of the edge in the tree
+   * @return {Edge} All valid codewords for an N-polygon
+   */
   var createEdge = function (p1, p2, start, end, depth) {
     if ( depth === void 0 ) depth = -1;
 
@@ -140,6 +182,13 @@
     };
   };
 
+  /**
+   * @param {number} N The number of sides
+   * @param {number} r The radius of the polygon
+   * @param {number} leftOffset The x offset
+   * @param {number} topOffset The y offset
+   * @return {number[]} A list of vertices for the polygon
+   */
   var createPolygonPoints = function (N, r, leftOffset, topOffset) {
     var points = [];
     var inc = (2 * Math.PI) / N;
@@ -158,6 +207,7 @@
       var ux = vec_x / mag;
       var uy = vec_y / mag;
 
+      // TODO Refactor to remove unit vector
       var point = { x: x, y: y, ux: ux, uy: uy };
       points.push(point);
     }
@@ -165,6 +215,10 @@
     return points;
   };
 
+  /**
+   * @param {Point[]} points A list of points for an N-gon
+   * @return {Edge[]} A list of edges for that N-gon
+   */
   var createPolygonEdges = function (points) {
     var edges = [];
     var N = points.length;
@@ -179,27 +233,56 @@
     return edges;
   };
 
-  var createTriangles = function (codeword, polygonEdges, interiorEdges) {
-    if (!interiorEdges.length) { return { solution: [], maxDepth: 1 }; }
+
+  /*
+  NODES
+  "0,6": Object { right: "1,6", parent: "7,0", depth: 1, … }
+  "1,4": Object { right: "2,4", parent: "1,5", depth: 4, … }
+  "1,5": Object { left: "1,4", parent: "1,6", depth: 3, … }
+  "1,6": Object { left: "1,5", parent: "0,6", depth: 2, … }
+  "2,4": Object { parent: "1,4", depth: 5, value: "2,4", … }
+  "7,0": Object { left: "0,6", value: "7,0", depth: 0, … }
+  */
+  // TODO REFACTOR THIS
+
+  /**
+   * @param {Point} p1 
+   * @param {Point} p2
+   * @property {number} start The index of p1 in the polygon
+   * @property {number} end The index of p2 in the polygon
+   * @property {number} depth The depth of the edge in the tree
+   * @return {Edge} All valid codewords for an N-polygon
+   */
+
+  // Solution is the edges of the tree
+  // Nodes is a dictionary with the index and end index being the key and {"left":null,"right":null,"parent":"1,4","depth":4,"value":"2,4"}
+
+  var createTriangles = function (codeword, polygonEdges, interiorEdges, points) {
+    if (!interiorEdges.length) { return { solution: [], maxDepth: 1, nodes: null, triangles: {}}; }
 
     var interiorMap = {};
 
     var N = polygonEdges.length;
     var interiorN = interiorEdges.length;
 
-    var rootKey = (N - 1) + ",0";
-
     for (var i = 0; i < interiorN; i++) {
       var edge = interiorEdges[i];
       var key = edge.getKey();
       interiorMap[key] = edge;
     }
-    interiorMap[rootKey] = polygonEdges[N - 1];
 
-    var formatKey = function (start, end) {
-      return (start + "," + end)
-    };
-    var getWrapIndex = function (idx) { return idx % N; };
+
+    for (var i$1 = 0; i$1 < polygonEdges.length; i$1++) {
+      var edge$1 = polygonEdges[i$1];
+      var key$1 = edge$1.getKey();
+      interiorMap[key$1] = edge$1;
+    }
+
+    var rootKey = (N - 1) + ",0";
+    // console.log(JSON.stringify(interiorMap), "INTERIOR MAP")
+    
+    var getWrapIndex = idxFunction(N);
+    
     var fillCrossings = function (crossings, start, end) {
       for (var i = start + 1; i < end; i++) {
         crossings[getWrapIndex(i)] = true;
@@ -208,15 +291,36 @@
 
     var nodes = {};
 
+    for (var i$2 = 0; i$2 < polygonEdges.length; i$2++) {
+      var edge$2 = polygonEdges[i$2];
+      var key$2 = edge$2.getKey();
+      nodes[key$2] = {
+        left: null,
+        right: null,
+        parent: null,
+        depth: 0,
+        value: key$2,
+        leaf: true,
+        inorderPos: null,
+      };
+    }
+
+    var triangles = [];
+
     var crossings = new Array(N).fill(false);
+
     var polyEdgesUsed = new Array(N).fill(false);
+
     var used = new Set(d3$1.range(N));
 
     var edgeStack = [];
     var startIndex = codeword.length - 1;
-    for (var i$1 = startIndex; i$1 >= 0; i$1--) {
-      var point = i$1;
-      var code = codeword[i$1];
+
+    var iterOrder = [];
+
+    for (var i$3 = startIndex; i$3 >= 0; i$3--) {
+      var point = i$3;
+      var code = codeword[i$3];
 
       var edgePoint = point + 2;
       while (code > 0) {
@@ -228,38 +332,43 @@
           code--;
           fillCrossings(crossings, point, edgePoint);
 
-          var node = {};
-          node.left = null;
-          node.right = null;
-          node.parent = null;
-          node.depth = 0;
-          var key$1 = formatKey(point, ind);
-          node.value = key$1;
-          nodes[key$1] = node;
+          var key$3 = formatKey(point, ind);
+          var node = {
+            left: null,
+            right: null,
+            parent: null,
+            depth: 0,
+            value: key$3,
+            leaf: false,
+            inorderPos: null,
+          };
+          nodes[key$3] = node;
 
           var checkRange = d3$1.range(point, edgePoint).map(function (e) { return getWrapIndex(e); });
           for (var j = 0; j < checkRange.length; j++) {
-            var edge$1 = checkRange[j];
-            if (!polyEdgesUsed[edge$1]) {
-              polyEdgesUsed[edge$1] = true;
-              tri.push([edge$1, getWrapIndex(edge$1 + 1)]);
-              used.delete(edge$1);
+            var edge$3 = checkRange[j];
+            // IF the edge is not used, add it to the triangle
+            if (!polyEdgesUsed[edge$3]) {
+              polyEdgesUsed[edge$3] = true;
+              
+              tri.push([edge$3, getWrapIndex(edge$3 + 1)]);
+              // let childKey = formatKey(edge, getWrapIndex(edge + 1));
+              var parentKey = formatKey(point, ind);
+              iterOrder.push(parentKey);
+              used.delete(edge$3);
             }
           }
-
+          
+          // If we don't make a triangle, then we know we have to use the interior edges
           while (tri.length < 3) {
             var e = edgeStack.pop();
-            var childKey = formatKey(e[0], e[1]);
-            var parentKey = formatKey(point, ind);
-            nodes[childKey].parent = parentKey;
-            
-            if (point == e[0]) {
-              nodes[parentKey].left = childKey;
-            } else {
-              nodes[parentKey].right = childKey;
-            }
+            // let childKey = formatKey(e[0], e[1])
+            var parentKey$1 = formatKey(point, ind);
+            iterOrder.push(parentKey$1);
             tri.push(e);
           }
+
+          triangles.push(tri);
 
           edgeStack.push([point, ind]);
         }
@@ -267,38 +376,84 @@
       }
     }
 
-    var rootNode = {};
-    rootNode.left = null;
-    rootNode.right = null;
-    rootNode.parent = null;
-    rootNode.value = rootKey;
-    rootNode.depth = 0;
+    var rootNode = {
+      left: null,
+      right: null,
+      parent: null,
+      value: rootKey,
+      depth: 0,
+      leaf: false
+    };
+
     nodes[rootKey] = rootNode;
+
+    // ==== ADD THE LAST TRIANGLE IN THE STACK
+    var lastTriangle = [];
     while (edgeStack.length) {
       var e$1 = edgeStack.pop();
-      var childKey$1 = formatKey(e$1[0], e$1[1]);
-      var parentKey$1 = rootKey;
-
-      nodes[childKey$1].parent = parentKey$1;
-
-      if (0 == e$1[0]) {
-        nodes[rootKey].left = childKey$1;
-      } else {
-        nodes[rootKey].right = childKey$1;
-      }
+      lastTriangle.push(e$1);
     }
 
     used.forEach(function (value) {
+      lastTriangle.push([value, getWrapIndex(value + 1)]);
     });
 
+    triangles.push(lastTriangle);
+    iterOrder.push(rootKey);
+    triangles.reverse();
+    iterOrder.reverse();
+    iterOrder = Array.from(new Set(iterOrder));
+    for (var i$4 = 0; i$4 < iterOrder.length; i$4++) {
+      var triangleIndexes = triangles[i$4];
+
+      var parentKey$2 = iterOrder[i$4];
+      var parentArr = parseKey(parentKey$2);
+
+      for (var j$1 = 0; j$1 < triangleIndexes.length; j$1++) {
+        var indexes = triangleIndexes[j$1];
+        var triKey = keyFromArr(indexes);
+        if (triKey == parentKey$2) {
+          continue
+        } else {
+          nodes[triKey].parent = parentKey$2;
+          if (i$4 == 0) {
+            if (indexes[0] == parentArr[1]) {
+              nodes[parentKey$2].left = triKey;
+            } else {
+              nodes[parentKey$2].right = triKey;
+            }
+          } else {
+            if (indexes[0] == parentArr[0]) {
+              nodes[parentKey$2].left = triKey;
+            } else {
+              nodes[parentKey$2].right = triKey;
+            }
+          }
+        } 
+      }
+    }
+    var tris = createTriangleFromIndex(triangles, points, iterOrder);
     var solution = [];
-    var start = rootKey;
 
     var maxDepth = 1;
 
-    // TODO CHECK THE LEFT AND RIGHT
+    var start = rootKey;
+
+    // Solution is the edges of the tree
+    // Nodes is a dictionary with the index and end index being the key and {"left":null,"right":null,"parent":"1,4","depth":4,"value":"2,4"}
     function bfs() {
       var queue = [start];
+
+      // Create the first edge from the root to first centroid
+      var e = createEdge(
+        interiorMap[start].midpoint,
+        tris[start].getCentroid(),
+        -1,
+        -1,
+        0
+      );
+      solution.push(e);
+
       while (queue.length > 0) {
         var n = queue.shift();
         var node = nodes[n];
@@ -306,45 +461,68 @@
 
         if (node.left) {
           var neighborEdge = interiorMap[node.left];
+
+          var startPoint = currEdge.midpoint;
+          var endPoint = neighborEdge.midpoint;
+
+          if (n in tris) {
+            startPoint = tris[n].getCentroid();
+          }
+          if (node.left in tris) {
+            endPoint = tris[node.left].getCentroid();
+          }
+          
           var neighborNode = nodes[node.left];
           neighborNode.depth = node.depth + 1;
           maxDepth = Math.max(maxDepth, node.depth + 1);
-          var e = createEdge(
-            currEdge.midpoint,
-            neighborEdge.midpoint,
+          var e$1 = createEdge(
+            startPoint,
+            endPoint,
             -1,
             -1,
             node.depth + 1
           );
           queue.push(node.left);
-          solution.push(e);
+          solution.push(e$1);
         }
 
         if (node.right) {
           var neighborEdge$1 = interiorMap[node.right];
+          var startPoint$1 = currEdge.midpoint;
+          var endPoint$1 = neighborEdge$1.midpoint;
+
+          if (n in tris) {
+            startPoint$1 = tris[n].getCentroid();
+          }
+          if (node.right in tris) {
+            endPoint$1 = tris[node.right].getCentroid();
+          }
+          
           var neighborNode$1 = nodes[node.right];
           neighborNode$1.depth = node.depth + 1;
           maxDepth = Math.max(maxDepth, node.depth + 1);
-          var e$1 = createEdge(
-            currEdge.midpoint,
-            neighborEdge$1.midpoint,
+          var e$2 = createEdge(
+            startPoint$1,
+            endPoint$1,
             -1,
             -1,
             node.depth + 1
           );
           queue.push(node.right);
-          solution.push(e$1);
+          solution.push(e$2);
         }
       }
     }
 
     bfs();
-    return { solution: solution, maxDepth: maxDepth, nodes: nodes };
+    return { solution: solution, maxDepth: maxDepth, nodes: nodes, triangles: tris };
   };
+
 
   var getCodewordEdges = function (points, codeword) {
     var N = points.length;
-    var getWrapIndex = function (idx) { return idx % N; };
+    var getWrapIndex = idxFunction(N);
+
     var fillCrossings = function (crossings, start, end) {
       for (var i = start + 1; i < end; i++) {
         crossings[getWrapIndex(i)] = true;
@@ -385,6 +563,66 @@
     return all_edges;
   };
 
+
+  /**
+   * @param {Point} p1 
+   * @param {Point} p2
+   * @param {Point} p3
+   * @return {Point} The centroid
+   */
+  var centroid = function (p1, p2, p3) {
+    var x = (p1.x + p2.x + p3.x) / 3;
+    var y = (p1.y + p2.y + p3.y) / 3;
+    var centroid = { x: x, y: y };
+    return centroid
+  };
+
+
+  /**
+   * @param {number[][]} triIndexes The triangle represented by the edge indexes
+   * [[1, 2], [2, 3], [3, 1]] 
+   * @param {Point[]} points The list of points of an N-gon
+   * @return {Triangle[]} The centroid
+   */
+  var createTriangleFromIndex = function (triIndexes, points, iterOrder) {
+    var triangles = {};
+    for (var i = 0; i < iterOrder.length; i++) {
+      var currEdge = iterOrder[i];
+      var triangleIndexes = triIndexes[i];
+      var indexSet = new Set();
+      for (var j = 0; j < triangleIndexes.length; j++) {
+
+        var indexes = triangleIndexes[j];
+        indexSet.add(indexes[0]);
+        indexSet.add(indexes[1]);
+      }
+
+      var arr = Array.from(indexSet);
+      var p1 = points[arr[0]];
+      var p2 = points[arr[1]];
+      var p3 = points[arr[2]];
+      var tri = createTriangle(p1, p2, p3);
+      triangles[currEdge] = tri;
+    }
+
+    return triangles
+  };
+
+
+  /**
+   * @typedef {Object} Triangle 
+   * @param {Point} p1
+   * @param {Point} p2
+   * @param {Point} p3
+   * @return {Triangle}
+   */
+  var createTriangle = function (p1, p2, p3) {
+    return {
+      p1: p1, p2: p2, p3: p3,
+      getCentroid: function () { return centroid(p1, p2, p3); }
+    }
+  };
+
   /**
    * The order of the edges in e2 is as closely matched to e1 as much as possible
    * If there are at least 2 edge differences, the original e2 is returned
@@ -396,10 +634,8 @@
   var positionEdges = function (e1, e2) {
 
     if (e1 == null || e1.length == 0) { return e2; }
-    // console.log("CALLED")
     // console.log(JSON.stringify(e1.map(d => ("" + d.start_idx + d.end_idx))), "PREVIOUS")
 
-    // console.log(123456789)
     // console.log(JSON.stringify(e2.map(d => ("" + d.start_idx + d.end_idx))), "CURRENT")
 
     var new_res = new Array(e1.length).fill(-1);
@@ -443,7 +679,7 @@
 
     new_res[value] = unused;
 
-    console.log(JSON.stringify(new_res.map(function (d) { return ("" + d.start_idx + d.end_idx); })), "RESULT");
+    // console.log(JSON.stringify(new_res.map(d => ("" + d.start_idx + d.end_idx))), "RESULT")
     // console.log(JSON.stringify(new_res), "CHECK ME")
     return new_res;
   };
@@ -484,11 +720,14 @@
       }
 
       treePath = [];
+
+      var triangles = [];
       if (interiorEdges) {
-        var treeInfo = createTriangles(codeword, polygonEdges, interiorEdges);
+        var treeInfo = createTriangles(codeword, polygonEdges, interiorEdges, points);
         treePath = treeInfo.solution;
         treeInfo.maxDepth;
         nodes = treeInfo.nodes;
+        triangles = Object.values(treeInfo.triangles);
       }
 
       lastEdges = interiorEdges;
@@ -574,7 +813,7 @@
 
       selection
         .selectAll(".root")
-        .data([polygonEdges[N - 1].midpoint])
+        .data(polygonEdges.map(function (e) { return e.midpoint; } ))
         .join(
           function (enter) { return enter
               .append("circle")
@@ -636,7 +875,7 @@
               .attr("class", "tree-path")
               .attr("stroke-width", strokeWidth)
               .attr("d", function (d) { return pointLine([d.p1, d.p2]); })
-              .attr("stroke", function (d) { return treeInterp(1-(d.depth / 11)); })
+              .attr("stroke", function (d) { return treeInterp(1 - (d.depth / 11)); }) // 11 is the max N
               .attr("opacity", "0.0")
               .transition()
               .delay(
@@ -651,7 +890,7 @@
 
               .attr("stroke-opacity", "1.0")
               .duration(1000)
-              .attr("opacity", "1.0")
+              .attr("opacity", "1")
               .attr("stroke-dashoffset", 0)
               .end()
               .then(function () {
@@ -731,13 +970,14 @@
           }
         );
 
+      // TODO
       selection
         .selectAll(".interiorVertex")
         .data(
-          interiorEdges.map(function (e) { return ({
-            x: e.midpoint.x,
-            y: e.midpoint.y,
-            start_idx: e.start_idx,
+          triangles.map(function (tri) { return ({
+            x: tri.getCentroid().x,
+            y: tri.getCentroid().y,
+            start_idx: 0,
           }); })
         )
         .join(
@@ -750,14 +990,44 @@
               .call(initializeRadius)
               .transition(t)
               .attr("r", pointSize)
-              .attr("fill", function (d) { return interp(d.start_idx / interiorEdges.length); }); },
+              .attr("fill", function (d) { return interp(3 / 11); }); },
           function (update) { return update.call(function (update) { return update
                 .transition(t)
                 .call(positionCircles)
-                .attr("fill", function (d) { return interp(d.start_idx / interiorEdges.length); }); }
+                .attr("fill", function (d) { return interp(3/ 11); }); }
             ); },
           function (exit) { return exit.transition(t).call(initializeRadius).remove(); }
         );
+      // selection
+      //   .selectAll(".interiorVertex")
+      //   .data(
+      //     interiorEdges.map((e) => ({
+      //       x: e.midpoint.x,
+      //       y: e.midpoint.y,
+      //       start_idx: e.start_idx,
+      //     }))
+      //   )
+      //   .join(
+      //     (enter) =>
+      //       enter
+      //         .append("circle")
+      //         .attr("class", "interiorVertex")
+      //         .transition()
+      //         .delay((_, i) => i * drawDelay)
+      //         .call(positionCircles)
+      //         .call(initializeRadius)
+      //         .transition(t)
+      //         .attr("r", pointSize)
+      //         .attr("fill", (d) => interp(d.start_idx / interiorEdges.length)),
+      //     (update) =>
+      //       update.call((update) =>
+      //         update
+      //           .transition(t)
+      //           .call(positionCircles)
+      //           .attr("fill", (d) => interp(d.start_idx / interiorEdges.length))
+      //       ),
+      //     (exit) => exit.transition(t).call(initializeRadius).remove()
+      //   );
     };
 
     my.codeword = function (_) {
@@ -966,6 +1236,7 @@
     var height;
     var margin; 
     var nodes; // Dictionary of nodes 
+    var N;
     var transDuration;
     var treeInterp;
     var interp;
@@ -975,20 +1246,24 @@
     
     var my = function (selection) {
       var t = d3$1.transition().duration(transDuration);
-      var tree = d3.tree().size([width, height]).separation(function (a, b) {
-        return (a.parent == b.parent ? 1 : 2) / a.depth;
-      });
+      var tree = d3.cluster().size([width, height]);
+      // .separation((a, b) => {
+      //   return (a.parent == b.parent ? 1 : 2)
+      // })
 
-      // let color = 
       var initializeRadius = function (circles) {
         circles.attr("r", 0);
       };
+
+      // const growRadius = (enter, color) => {
+      //   enter.transition(t).attr("r", nodeSize).attr("fill", color);
+      // };
 
       var positionCircles = function (circles) {
         circles.attr("cx", function (d) { return d.x; }).attr("cy", function (d) { return d.y; });
       };
 
-      var rootKey = (Object.keys(nodes).length + 1) + ",0";
+      var rootKey = (N - 1) + ",0";
 
       var links = [];
       var n = [];
@@ -1003,33 +1278,11 @@
           }
           return d.children
         });
-        root.x0 = width / 2;
-        root.y0 = 0;
+
         var treeData = tree(root);
         n = treeData.descendants();
+        n[0].y = 20;
         links = treeData.descendants().slice(1); 
-        treeData.height;
-
-        var s = {};
-        links[0].parent.x -= 150;
-        links[0].parent.y += 20;
-
-        for (var i = 0; i < links.length; i++) {
-          var currLink = links[i];
-          s[currLink.value] = currLink.x;
-          
-          if (currLink.parent.value in s) {
-            currLink.parent.value = s[currLink.parent.value];
-          }
-
-          if (currLink.parent.data.left == currLink.data.value) {
-            currLink.x = currLink.parent.x - maxXTransform * (1 / currLink.depth);
-          } else {
-            currLink.x = currLink.parent.x + maxXTransform * (1 / currLink.depth);
-          }
-
-          s[currLink.value] = currLink.x;
-        }
       }
 
       selection
@@ -1066,10 +1319,7 @@
             exit
               .transition(t)
               .attr("stroke-width", "0.0")
-              // .call(exitLines)
               .remove();
-              // .attr('stroke-width', 0)
-              // .remove()
           }
         );  
         selection
@@ -1078,11 +1328,13 @@
         .join(
           function (enter) { return enter
               .append("circle")
-              .attr('data-value', function (d) { return d.data.value; })
+              .attr('data-value', function (d) { return d.data.value })
               .attr("class", "real-tree-node")
               .attr("opacity", "0.0")
-              .attr("fill", function (d, i) { return interp(i == 0 ? 0 : +d.data.value.split(",")[0] / (n.length - 1)); })
-              // .delay((_, i) => i * drawDelay)
+              .attr("fill", function (d) { 
+
+                return d.data.leaf ? "black" : interp(3 / 11)
+              })
               .call(initializeRadius)
               .transition(t)
               .call(positionCircles)
@@ -1091,7 +1343,7 @@
           function (update) { return update.call(function (update) { return update
                 .transition(t)
                 .call(positionCircles)
-                .attr("fill", function (d, i) { return interp(i == 0 ? 0 : +d.data.value.split(",")[0] / (n.length - 1)); }); }
+                .attr("fill", function (d) { return d.data.leaf ? "black" : interp(3 / 11); }); }
             ); },
           function (exit) { return exit.transition(t).call(initializeRadius).remove(); }
         );    
@@ -1113,6 +1365,10 @@
       return arguments.length ? ((nodes = _), my) : nodes;
     };
 
+    my.N = function (_) {
+      return arguments.length ? ((N = _), my) : N;
+    };
+
     my.transDuration = function (_) {
       return arguments.length ? ((transDuration = _), my) : transDuration;
     };
@@ -1132,12 +1388,14 @@
     my.reset = function () {
       nodes = {};
       points = [];
+      N = null;
       return my;
     };
 
     my.update = function(poly) {
       nodes = poly.nodes();
       points = poly.treePath();
+      N = poly.N();
       return my
     };
 
@@ -1216,7 +1474,7 @@
   var treeSvg = d3$1.select("body")
     .append("svg")
     .attr("id", "tree")
-    .attr("width", 300)
+    .attr("width", 800)
     .attr("height", height - 400);
 
   var NMenu = menuContainer.append("div");
@@ -1247,9 +1505,8 @@
 
   var index = 0;
   function playAnimation(poly, t) {
-    clearInterval(animationInter);
-    index = 0;
-    animationInter = setInterval(function () {
+    var started = poly.treePath().length == 0;
+    function callback() {
       if (index >= codewords.length) {
         index = 0;
         clearInterval(animationInter);
@@ -1260,8 +1517,25 @@
         d3$1.select("#codeword-menu").property("selectedIndex", index + 1);
         codewordHeader.text(("Codeword: " + cw));
         index += 1;
+
+        clearInterval(animationInter);
+        var timeout = 0;
+        if (started) {
+          started = false;
+          timeout = 250 * poly.N();
+        }
+
+        setTimeout(function () {
+          animationInter = setInterval(callback, 1000);
+        }, timeout);
+
+
       }
-    }, 1000);
+    }
+
+    clearInterval(animationInter);
+    index = 0;
+    animationInter = setInterval(callback, 1000);
   }
 
   var toggle = function (disable) {
@@ -1321,7 +1595,7 @@
       });
 
     var startButton = button()
-      .labelText("Start anim")
+      .labelText("View Hamiltonian Path")
       .id("start-button")
       .on("click", function (_) {
         playAnimation(poly, t);

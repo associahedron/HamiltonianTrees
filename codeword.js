@@ -110,39 +110,3 @@ export function isValidCodeword(cw, n) {
 
   return isValid;
 }
-
-console.log(getCodeWords(4))
-
-
-
-function isValidRotation(cw1, cw2) {
-
-
-  return 
-}
-
-// let codewords = getCodeWords(4)
-// console.log(JSON.stringify(codewords))
-
-
-function gather_stacks(codewords) {
-  console.log(getCodeWords(4))
-  let stacks = []
-  // let d = 0
-  
-  let height = 1
-  // console.log(cw)
-  for (let d = 0; d < 2; d++) {
-    for (let h = 1; h < 2; h++) {
-
-    }
-  }
-
-
-
-  return 
-}
-
-let codewords = getCodeWords(5)
-console.log(JSON.stringify(codewords))
-// gather_stacks(JSON.stringify(codewords))

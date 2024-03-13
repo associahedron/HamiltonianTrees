@@ -72,7 +72,7 @@ const polySvg = select("body")
 const treeSvg = select("body")
   .append("svg")
   .attr("id", "tree")
-  .attr("width", 300)
+  .attr("width", 800)
   .attr("height", height - 400);
 
 const NMenu = menuContainer.append("div");
@@ -103,9 +103,8 @@ let animationInter = null;
 
 let index = 0;
 function playAnimation(poly, t) {
-  clearInterval(animationInter);
-  index = 0;
-  animationInter = setInterval(() => {
+  let started = poly.treePath().length == 0
+  function callback() {
     if (index >= codewords.length) {
       index = 0;
       clearInterval(animationInter);
@@ -116,8 +115,25 @@ function playAnimation(poly, t) {
       select("#codeword-menu").property("selectedIndex", index + 1);
       codewordHeader.text(`Codeword: ${cw}`);
       index += 1;
+
+      clearInterval(animationInter)
+      let timeout = 0
+      if (started) {
+        started = false
+        timeout = 250 * poly.N()
+      }
+
+      setTimeout(() => {
+        animationInter = setInterval(callback, 1000);
+      }, timeout)
+
+
     }
-  }, 1000);
+  }
+
+  clearInterval(animationInter);
+  index = 0;
+  animationInter = setInterval(callback, 1000);
 }
 
 const toggle = (disable) => {
@@ -178,7 +194,7 @@ function main() {
     });
 
   const startButton = button()
-    .labelText("Start anim")
+    .labelText("View Hamiltonian Path")
     .id("start-button")
     .on("click", (_) => {
       playAnimation(poly, t);

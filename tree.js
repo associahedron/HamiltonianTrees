@@ -1,9 +1,11 @@
-import { dispatch, transition } from 'd3';
+import { dispatch, transition, cluster } from 'd3';
+
 export const tree = () => {
   let width;
   let height;
   let margin; 
   let nodes; // Dictionary of nodes 
+  let N;
   let transDuration;
   let treeInterp;
   let interp;
@@ -13,28 +15,27 @@ export const tree = () => {
   
   const my = (selection) => {
     const t = transition().duration(transDuration);
-    const tree = d3.tree().size([width, height]).separation((a, b) => {
-      return (a.parent == b.parent ? 1 : 2) / a.depth;
-    })
+    const tree = d3.cluster().size([width, height])
+    // .separation((a, b) => {
+    //   return (a.parent == b.parent ? 1 : 2)
+    // })
 
-    // let color = 
     const initializeRadius = (circles) => {
       circles.attr("r", 0);
     };
 
-    const growRadius = (enter, color) => {
-      enter.transition(t).attr("r", nodeSize).attr("fill", color);
-    };
+    // const growRadius = (enter, color) => {
+    //   enter.transition(t).attr("r", nodeSize).attr("fill", color);
+    // };
 
     const positionCircles = (circles) => {
       circles.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
     };
 
-    const rootKey = `${Object.keys(nodes).length + 1},0`
+    const rootKey = `${N - 1},0`
 
     let links = []
     let n = []
-    let treeHeight = 1
     if (nodes && rootKey in nodes) {
       const root = d3.hierarchy(nodes[rootKey], (d) => {
         d.children = []
@@ -46,33 +47,11 @@ export const tree = () => {
         }
         return d.children
       })
-      root.x0 = width / 2
-      root.y0 = 0
+
       const treeData = tree(root)
       n = treeData.descendants()
+      n[0].y = 20
       links = treeData.descendants().slice(1) 
-      treeHeight = treeData.height
-
-      let s = {}
-      links[0].parent.x -= 150
-      links[0].parent.y += 20
-
-      for (let i = 0; i < links.length; i++) {
-        let currLink = links[i]
-        s[currLink.value] = currLink.x
-        
-        if (currLink.parent.value in s) {
-          currLink.parent.value = s[currLink.parent.value]
-        }
-
-        if (currLink.parent.data.left == currLink.data.value) {
-          currLink.x = currLink.parent.x - maxXTransform * (1 / currLink.depth)
-        } else {
-          currLink.x = currLink.parent.x + maxXTransform * (1 / currLink.depth)
-        }
-
-        s[currLink.value] = currLink.x
-      }
     }
 
     selection
@@ -109,10 +88,7 @@ export const tree = () => {
           exit
             .transition(t)
             .attr("stroke-width", "0.0")
-            // .call(exitLines)
             .remove();
-            // .attr('stroke-width', 0)
-            // .remove()
         },
       )  
       selection
@@ -122,11 +98,13 @@ export const tree = () => {
         (enter) =>
           enter
             .append("circle")
-            .attr('data-value', d => d.data.value)
+            .attr('data-value', d => { return d.data.value })
             .attr("class", "real-tree-node")
             .attr("opacity", "0.0")
-            .attr("fill", (d, i) => interp(i == 0 ? 0 : +d.data.value.split(",")[0] / (n.length - 1)))
-            // .delay((_, i) => i * drawDelay)
+            .attr("fill", (d) => { 
+
+              return d.data.leaf ? "black" : interp(3 / 11)
+            })
             .call(initializeRadius)
             .transition(t)
             .call(positionCircles)
@@ -137,7 +115,7 @@ export const tree = () => {
             update
               .transition(t)
               .call(positionCircles)
-              .attr("fill", (d, i) => interp(i == 0 ? 0 : +d.data.value.split(",")[0] / (n.length - 1)))
+              .attr("fill", (d) => d.data.leaf ? "black" : interp(3 / 11))
           ),
         (exit) => exit.transition(t).call(initializeRadius).remove()
       )    
@@ -159,6 +137,10 @@ export const tree = () => {
     return arguments.length ? ((nodes = _), my) : nodes;
   };
 
+  my.N = function (_) {
+    return arguments.length ? ((N = _), my) : N;
+  };
+
   my.transDuration = function (_) {
     return arguments.length ? ((transDuration = _), my) : transDuration;
   };
@@ -178,12 +160,14 @@ export const tree = () => {
   my.reset = function () {
     nodes = {}
     points = []
+    N = null
     return my;
   };
 
   my.update = function(poly) {
     nodes = poly.nodes()
     points = poly.treePath()
+    N = poly.N()
     return my
   }
 

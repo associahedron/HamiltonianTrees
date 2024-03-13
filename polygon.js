@@ -18,10 +18,8 @@ import {
 const positionEdges = (e1, e2) => {
 
   if (e1 == null || e1.length == 0) return e2;
-  // console.log("CALLED")
   // console.log(JSON.stringify(e1.map(d => ("" + d.start_idx + d.end_idx))), "PREVIOUS")
 
-  // console.log(123456789)
   // console.log(JSON.stringify(e2.map(d => ("" + d.start_idx + d.end_idx))), "CURRENT")
 
   let new_res = new Array(e1.length).fill(-1);
@@ -61,7 +59,7 @@ const positionEdges = (e1, e2) => {
 
   new_res[value] = unused;
 
-  console.log(JSON.stringify(new_res.map(d => ("" + d.start_idx + d.end_idx))), "RESULT")
+  // console.log(JSON.stringify(new_res.map(d => ("" + d.start_idx + d.end_idx))), "RESULT")
   // console.log(JSON.stringify(new_res), "CHECK ME")
   return new_res;
 };
@@ -103,12 +101,15 @@ export const polygon = () => {
 
     treePath = []
 
+    let triangles = []
+
     let maxDepth = 1;
     if (interiorEdges) {
-      let treeInfo = createTriangles(codeword, polygonEdges, interiorEdges);
+      let treeInfo = createTriangles(codeword, polygonEdges, interiorEdges, points);
       treePath = treeInfo.solution;
       maxDepth = treeInfo.maxDepth;
       nodes = treeInfo.nodes
+      triangles = Object.values(treeInfo.triangles)
     }
 
     lastEdges = interiorEdges;
@@ -195,7 +196,7 @@ export const polygon = () => {
 
     selection
       .selectAll(".root")
-      .data([polygonEdges[N - 1].midpoint])
+      .data(polygonEdges.map((e) => e.midpoint ))
       .join(
         (enter) =>
           enter
@@ -264,7 +265,7 @@ export const polygon = () => {
             .attr("class", "tree-path")
             .attr("stroke-width", strokeWidth)
             .attr("d", (d) => pointLine([d.p1, d.p2]))
-            .attr("stroke", (d) => treeInterp(1-(d.depth / 11)))
+            .attr("stroke", (d) => treeInterp(1 - (d.depth / 11))) // 11 is the max N
             .attr("opacity", "0.0")
             .transition()
             .delay(
@@ -279,7 +280,7 @@ export const polygon = () => {
 
             .attr("stroke-opacity", "1.0")
             .duration(1000)
-            .attr("opacity", "1.0")
+            .attr("opacity", "1")
             .attr("stroke-dashoffset", 0)
             .end()
             .then(() => {
@@ -359,13 +360,14 @@ export const polygon = () => {
         }
       );
 
+    // TODO
     selection
       .selectAll(".interiorVertex")
       .data(
-        interiorEdges.map((e) => ({
-          x: e.midpoint.x,
-          y: e.midpoint.y,
-          start_idx: e.start_idx,
+        triangles.map((tri) => ({
+          x: tri.getCentroid().x,
+          y: tri.getCentroid().y,
+          start_idx: 0,
         }))
       )
       .join(
@@ -379,16 +381,46 @@ export const polygon = () => {
             .call(initializeRadius)
             .transition(t)
             .attr("r", pointSize)
-            .attr("fill", (d) => interp(d.start_idx / interiorEdges.length)),
+            .attr("fill", (d) => interp(3 / 11)),
         (update) =>
           update.call((update) =>
             update
               .transition(t)
               .call(positionCircles)
-              .attr("fill", (d) => interp(d.start_idx / interiorEdges.length))
+              .attr("fill", (d) => interp(3/ 11))
           ),
         (exit) => exit.transition(t).call(initializeRadius).remove()
       );
+    // selection
+    //   .selectAll(".interiorVertex")
+    //   .data(
+    //     interiorEdges.map((e) => ({
+    //       x: e.midpoint.x,
+    //       y: e.midpoint.y,
+    //       start_idx: e.start_idx,
+    //     }))
+    //   )
+    //   .join(
+    //     (enter) =>
+    //       enter
+    //         .append("circle")
+    //         .attr("class", "interiorVertex")
+    //         .transition()
+    //         .delay((_, i) => i * drawDelay)
+    //         .call(positionCircles)
+    //         .call(initializeRadius)
+    //         .transition(t)
+    //         .attr("r", pointSize)
+    //         .attr("fill", (d) => interp(d.start_idx / interiorEdges.length)),
+    //     (update) =>
+    //       update.call((update) =>
+    //         update
+    //           .transition(t)
+    //           .call(positionCircles)
+    //           .attr("fill", (d) => interp(d.start_idx / interiorEdges.length))
+    //       ),
+    //     (exit) => exit.transition(t).call(initializeRadius).remove()
+    //   );
   };
 
   my.codeword = function (_) {
