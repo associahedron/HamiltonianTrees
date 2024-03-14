@@ -12,7 +12,6 @@ export const input = () => {
       .attr("placeholder", placeholder)
       .attr("id", id)
       .on("focusout", (e) => {
-        console.log(e.target.value)
         listeners.call("focusout", null, e.target.value);
       })
       .on("keyup", (e) => {
