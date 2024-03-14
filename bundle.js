@@ -1205,7 +1205,7 @@
   var input = function () {
     var id;
     var placeholder;
-    var listeners = d3$1.dispatch("confirm");
+    var listeners = d3$1.dispatch("confirm", "focusout");
 
     var my = function (selection) {
       selection
@@ -1214,6 +1214,10 @@
         .join("input")
         .attr("placeholder", placeholder)
         .attr("id", id)
+        .on("focusout", function (e) {
+          console.log(e.target.value);
+          listeners.call("focusout", null, e.target.value);
+        })
         .on("keyup", function (e) {
           if (e.key == "Enter") {
             listeners.call("confirm", null, e.target.value);
@@ -1536,14 +1540,14 @@
 
   menuContainer.append("div");
 
-  var NInputLabel = d3$1.select("div").append("label").text("Enter N: ");
+  var NInputLabel = d3$1.select("div").append("label").text("Type N and press Enter: ");
   var NInput = menuContainer.append("div");
 
 
   var codewordMenu = menuContainer.append("div");
   var startAnimationButton = menuContainer.append("div");
   var restartDrawButton = menuContainer.append("div");
-  var codewordLabel = d3$1.select("div").append("label").text("Enter codeword: ");
+  var codewordLabel = d3$1.select("div").append("label").text("Type codeword and press Enter: ");
   var inputButton = menuContainer.append("div");
 
   var radius = 100;
@@ -1629,7 +1633,7 @@
         clearInterval(animationInter);
         polySvg.call(poly.codeword(parsedCodeword));
         codewordHeader.text(("Codeword: " + parsedCodeword));
-        codewordLabel.text("Enter codeword: ").style("color", "black");
+        codewordLabel.text("Type codeword and press Enter:  ").style("color", "black");
 
         if (cw != "none") {
           treeSvg.call(t.update(poly));
@@ -1687,14 +1691,14 @@
         playAnimation(poly, t);
       });
 
-    var nInput = input()
-      .id("n-input")
-      // .placeholder("2, 7, etc")
-      .on("confirm", function (value) {
-        var validationRegex = /^[1-9][0-9]*$/;
-        if (validationRegex.test(value)) {
-          var n  = parseInt(value);
-          if (n >= 2) {
+    
+
+
+    var onNConfirm = function (value) {
+      var validationRegex = /^[1-9][0-9]*$/;
+      if (validationRegex.test(value)) {
+        var n  = parseInt(value);
+        if (n >= 2) {
           // const cws = getCodeWords(n);
           // codewords = cws;
           // const options = createCodewordOptions(cws);
@@ -1704,7 +1708,7 @@
           polySvg.call(poly.N(+n + 2));
           codewordHeader.text(("Codeword: " + ([])));
           treeSvg.call(t.update(poly));
-          NInputLabel.text("Enter N:").style("color", "black");
+          NInputLabel.text("Type N and press Enter: ").style("color", "black");
           if (n > 9 && !warned) {
             warned = true;
             alert("Note: When viewing the codewords or visualizing the Hamiltonian path for n > 9, your browser may slow down, especially for larger values of n");
@@ -1715,29 +1719,48 @@
       } else {
         NInputLabel.text("Invalid N.").style("color", "red");
       }
-    });
 
+    };
+
+    var nInput = input()
+      .id("n-input")
+      // .placeholder("2, 7, etc")
+      .on("focusout", function (value) {
+        onNConfirm(value);
+      })
+      .on("confirm", function (value) {
+        onNConfirm(value);
+      });
+
+
+
+    var onCodewordConfirm = function (value) {
+      value = value.replaceAll(" ", "");
+      var validationRegex = /^(\d+,)*\d+$/;
+      if (validationRegex.test(value)) {
+        var codeword = value.split(",");
+        var n = poly.N();
+        if (codeword.length == n - 2 && isValidCodeword(codeword, n - 2)) {
+          clearInterval(animationInter);
+          polySvg.call(poly.codeword(codeword));
+          codewordHeader.text(("Codeword: " + codeword));
+          treeSvg.call(t.update(poly));
+          codewordLabel.text("Type codeword and press Enter: ").style("color", "black");
+        } else {
+          codewordLabel.text("Invalid codeword.").style("color", "red");
+        }
+      } else {
+        codewordLabel.text("Invalid input.").style("color", "red");
+      }
+    };
 
     var codewordInput = input()
       .id("codeword-input")
+      .on("focusout", function (value) {
+        onCodewordConfirm(value);
+      })
       .on("confirm", function (value) {
-        value = value.replaceAll(" ", "");
-        var validationRegex = /^(\d+,)*\d+$/;
-        if (validationRegex.test(value)) {
-          var codeword = value.split(",");
-          var n = poly.N();
-          if (codeword.length == n - 2 && isValidCodeword(codeword, n - 2)) {
-            clearInterval(animationInter);
-            polySvg.call(poly.codeword(codeword));
-            codewordHeader.text(("Codeword: " + codeword));
-            treeSvg.call(t.update(poly));
-            codewordLabel.text("Enter codeword: ").style("color", "black");
-          } else {
-            codewordLabel.text("Invalid codeword.").style("color", "red");
-          }
-        } else {
-          codewordLabel.text("Invalid input.").style("color", "red");
-        }
+        onCodewordConfirm(value);
       });
 
     var poly = polygon()

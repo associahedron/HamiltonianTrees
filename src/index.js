@@ -81,14 +81,14 @@ const treeSvg = select("body")
 
 const NMenu = menuContainer.append("div");
 
-const NInputLabel = select("div").append("label").text("Enter N: ");
+const NInputLabel = select("div").append("label").text("Type N and press Enter: ");
 const NInput = menuContainer.append("div");
 
 
 const codewordMenu = menuContainer.append("div");
 const startAnimationButton = menuContainer.append("div");
 const restartDrawButton = menuContainer.append("div");
-const codewordLabel = select("div").append("label").text("Enter codeword: ");
+const codewordLabel = select("div").append("label").text("Type codeword and press Enter: ");
 const inputButton = menuContainer.append("div");
 
 const radius = 100;
@@ -174,7 +174,7 @@ function main() {
       clearInterval(animationInter);
       polySvg.call(poly.codeword(parsedCodeword));
       codewordHeader.text(`Codeword: ${parsedCodeword}`);
-      codewordLabel.text("Enter codeword: ").style("color", "black");
+      codewordLabel.text("Type codeword and press Enter:  ").style("color", "black");
 
       if (cw != "none") {
         treeSvg.call(t.update(poly));
@@ -232,14 +232,14 @@ function main() {
       playAnimation(poly, t);
     });
 
-  const nInput = input()
-    .id("n-input")
-    // .placeholder("2, 7, etc")
-    .on("confirm", (value) => {
-      const validationRegex = /^[1-9][0-9]*$/;
-      if (validationRegex.test(value)) {
-        const n  = parseInt(value)
-        if (n >= 2) {
+  
+
+
+  const onNConfirm = (value) => {
+    const validationRegex = /^[1-9][0-9]*$/;
+    if (validationRegex.test(value)) {
+      const n  = parseInt(value)
+      if (n >= 2) {
         // const cws = getCodeWords(n);
         // codewords = cws;
         // const options = createCodewordOptions(cws);
@@ -249,7 +249,7 @@ function main() {
         polySvg.call(poly.N(+n + 2));
         codewordHeader.text(`Codeword: ${[]}`);
         treeSvg.call(t.update(poly));
-        NInputLabel.text("Enter N:").style("color", "black");
+        NInputLabel.text("Type N and press Enter: ").style("color", "black");
         if (n > 9 && !warned) {
           warned = true
           alert("Note: When viewing the codewords or visualizing the Hamiltonian path for n > 9, your browser may slow down, especially for larger values of n")
@@ -260,29 +260,48 @@ function main() {
     } else {
       NInputLabel.text("Invalid N.").style("color", "red");
     }
-  });
 
+  }
+
+  const nInput = input()
+    .id("n-input")
+    // .placeholder("2, 7, etc")
+    .on("focusout", (value) => {
+      onNConfirm(value)
+    })
+    .on("confirm", (value) => {
+      onNConfirm(value)
+    });
+
+
+
+  const onCodewordConfirm = (value) => {
+    value = value.replaceAll(" ", "");
+    const validationRegex = /^(\d+,)*\d+$/;
+    if (validationRegex.test(value)) {
+      const codeword = value.split(",");
+      const n = poly.N();
+      if (codeword.length == n - 2 && isValidCodeword(codeword, n - 2)) {
+        clearInterval(animationInter);
+        polySvg.call(poly.codeword(codeword));
+        codewordHeader.text(`Codeword: ${codeword}`);
+        treeSvg.call(t.update(poly));
+        codewordLabel.text("Type codeword and press Enter: ").style("color", "black");
+      } else {
+        codewordLabel.text("Invalid codeword.").style("color", "red");
+      }
+    } else {
+      codewordLabel.text("Invalid input.").style("color", "red");
+    }
+  }
 
   const codewordInput = input()
     .id("codeword-input")
+    .on("focusout", (value) => {
+      onCodewordConfirm(value)
+    })
     .on("confirm", (value) => {
-      value = value.replaceAll(" ", "");
-      const validationRegex = /^(\d+,)*\d+$/;
-      if (validationRegex.test(value)) {
-        const codeword = value.split(",");
-        const n = poly.N();
-        if (codeword.length == n - 2 && isValidCodeword(codeword, n - 2)) {
-          clearInterval(animationInter);
-          polySvg.call(poly.codeword(codeword));
-          codewordHeader.text(`Codeword: ${codeword}`);
-          treeSvg.call(t.update(poly));
-          codewordLabel.text("Enter codeword: ").style("color", "black");
-        } else {
-          codewordLabel.text("Invalid codeword.").style("color", "red");
-        }
-      } else {
-        codewordLabel.text("Invalid input.").style("color", "red");
-      }
+      onCodewordConfirm(value)
     });
 
   const poly = polygon()
