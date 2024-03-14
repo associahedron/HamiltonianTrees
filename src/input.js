@@ -1,6 +1,7 @@
 import { dispatch } from "d3";
 export const input = () => {
   let id;
+  let placeholder;
   const listeners = dispatch("confirm");
 
   const my = (selection) => {
@@ -8,6 +9,7 @@ export const input = () => {
       .selectAll("input")
       .data([null])
       .join("input")
+      .attr("placeholder", placeholder)
       .attr("id", id)
       .on("keyup", (e) => {
         if (e.key == "Enter") {
@@ -18,6 +20,10 @@ export const input = () => {
 
   my.id = function (_) {
     return arguments.length ? ((id = _), my) : id;
+  };
+
+  my.placeholder = function (_) {
+    return arguments.length ? ((placeholder = _), my) : placeholder;
   };
 
   my.on = function () {

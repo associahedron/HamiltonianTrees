@@ -24,3 +24,8 @@ text {
   display: flex;
   justify-content: space-around; 
 }
+
+#tree-container {
+  /* text-align: center; */
+  /* right: 400; */
+}

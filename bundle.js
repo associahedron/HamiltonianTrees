@@ -670,17 +670,12 @@
       }
     }
 
-    // console.log(count, "HEREEEEE")
-
     if (count > 1) { return e2; }
 
     var keys = unusedIndex.keys();
     var value = keys.next().value;
 
     new_res[value] = unused;
-
-    // console.log(JSON.stringify(new_res.map(d => ("" + d.start_idx + d.end_idx))), "RESULT")
-    // console.log(JSON.stringify(new_res), "CHECK ME")
     return new_res;
   };
 
@@ -765,8 +760,8 @@
 
       var positionText = function (text) {
         text
-          .attr("x", function (d) { return d.x - 3 + d.ux * 15; })
-          .attr("y", function (d) { return d.y + 6 + d.uy * 15; });
+          .attr("x", function (_, i) { return points[i].x - 3 + points[i].ux * 15; })
+          .attr("y", function (_, i) { return points[i].y + 6 + points[i].uy * 15; });
       };
 
       var calculateDashArr = function (edge) {
@@ -791,40 +786,74 @@
 
       selection
         .selectAll(".vertex-label")
-        .data(points)
+        .data(codeword)
         .join(
           function (enter) {
             enter
               .append("text")
               .attr("class", "vertex-label")
-              .attr("font-size", "0px")
+              .attr("opacity", "0.0")
+              .attr("font-size", fontSize)
               .call(positionText)
               .transition(t)
-              .attr("font-size", fontSize)
-              .text(function (_, i) { return i; });
+
+              .attr("opacity", "1.0")
+              .text(function (d) { return d; });
+               
+              // });
           },
 
-          function (update) { return update.call(function (update) { return update.transition(t).call(positionText); }); },
-          function (exit) { return exit.transition(t).attr("font-size", "0px").remove(); }
-        )
-        .transition(t)
-        .attr("opacity", "1.0")
-        .text(function (_, i) { return i; });
+          function (update) { return update.call(function (update) { return update
+            // .attr("opacity", "0.0")
+            .transition(t)
+            // .attr("font-size", fontSize)
+            // .attr("opacity", "1.0")
+            .text(function (d) { return d; })
+            .call(positionText); }); },
+          function (exit) { return exit
+            .transition(t)
+            .attr("opacity", "0.0")
+            .remove(); }
+        );
+        // .attr("opacity", "0.0")
+        // .transition(t)
+        // .attr("opacity", "1.0")
+        // .text((d, i) => {
+        //   if (codeword[i] != null) {
+        //     return codeword[i].toString()
+        //   }            
+        // })
 
       selection
+        .select("#poly-nodes")
+        .selectAll(".edge-node")
+        .data(polygonEdges.map(function (e) { return e.midpoint; } ).slice(0, -1))
+        .join(
+          function (enter) { return enter
+              .append("circle")
+              .attr("class", "edge-node")
+              .call(enterCircles, interp(7 / 11)); },
+
+          function (update) { return update.call(function (update) { return update.transition(t).call(positionCircles); }); },
+          function (exit) { return exit.transition(t).call(initializeRadius).remove(); }
+        );
+    
+      selection
+        .select("#poly-nodes")
         .selectAll(".root")
-        .data(polygonEdges.map(function (e) { return e.midpoint; } ))
+        .data(polygonEdges.map(function (e) { return e.midpoint; } ).slice(-1))
         .join(
           function (enter) { return enter
               .append("circle")
               .attr("class", "root")
-              .call(enterCircles, interp(pointColor)); },
+              .call(enterCircles, "black"); },
 
           function (update) { return update.call(function (update) { return update.transition(t).call(positionCircles); }); },
           function (exit) { return exit.transition(t).call(initializeRadius).remove(); }
         );
 
       selection
+        .select("#poly-nodes")
         .selectAll(".vertex")
         .data(points)
         .join(
@@ -837,6 +866,7 @@
         );
 
       selection
+        .select("#poly-links")
         .selectAll(".polygon-lines")
         .data(polygonEdges)
         .join(
@@ -866,6 +896,7 @@
         .attr("stroke-width", strokeWidth);
 
       selection
+        .select("#poly-interior-links")
         .selectAll(".tree-path")
         .data(treePath)
         .join(
@@ -923,6 +954,7 @@
         );
 
       selection
+        .select("#poly-links")
         .selectAll(".interior")
         .data(interiorEdges)
         .join(
@@ -1121,7 +1153,7 @@
     var id;
     var labelText;
     var options;
-    var listeners = d3$1.dispatch('change');
+    var listeners = d3$1.dispatch('change', 'focus');
     var my = function (selection) {
       selection
         .selectAll('label')
@@ -1137,6 +1169,9 @@
         .attr('id', id)
         .on('change', function (event) {
           listeners.call('change', null, event.target.value);
+        })
+        .on('focus', function (event) {
+          listeners.call('focus', null);
         })
         .selectAll('option')
         .data(options)
@@ -1169,6 +1204,7 @@
 
   var input = function () {
     var id;
+    var placeholder;
     var listeners = d3$1.dispatch("confirm");
 
     var my = function (selection) {
@@ -1176,6 +1212,7 @@
         .selectAll("input")
         .data([null])
         .join("input")
+        .attr("placeholder", placeholder)
         .attr("id", id)
         .on("keyup", function (e) {
           if (e.key == "Enter") {
@@ -1186,6 +1223,10 @@
 
     my.id = function (_) {
       return arguments.length ? ((id = _), my) : id;
+    };
+
+    my.placeholder = function (_) {
+      return arguments.length ? ((placeholder = _), my) : placeholder;
     };
 
     my.on = function () {
@@ -1246,9 +1287,12 @@
     
     var my = function (selection) {
       var t = d3$1.transition().duration(transDuration);
-      var tree = d3.cluster().size([width, height]);
+      var tree = d3.cluster()
+      .nodeSize([20, 25]);
+      // .size([width, height])
+      // .nodeSize([20, 20])
       // .separation((a, b) => {
-      //   return (a.parent == b.parent ? 1 : 2)
+      //   return (a.parent == b.parent ? 1 : 10)
       // })
 
       var initializeRadius = function (circles) {
@@ -1280,8 +1324,17 @@
         });
 
         var treeData = tree(root);
+        // treeData.y = treeData.y + 20
+
         n = treeData.descendants();
-        n[0].y = 20;
+
+        for (var i = 0; i < n.length; i++) {
+          n[i].x = n[i].x + 30 * N;
+          n[i].y = n[i].y + 80;
+        }
+
+    
+        n[0].y = n[0].y - (N * 5);
         links = treeData.descendants().slice(1); 
       }
 
@@ -1304,7 +1357,7 @@
               .attr('y1', function (d) { return d.parent.y; })
               .attr('x2', function (d) { return d.x; })
               .attr('y2', function (d) { return d.y; })
-              .attr("stroke", function (d) { return treeInterp(1-(d.depth / 11)); });
+              .attr("stroke", function (d) { return treeInterp(1- (d.depth / 11)); });
           },
           function (update) {
             update
@@ -1313,7 +1366,7 @@
                 .attr('y1', function (d) { return d.parent.y; })
                 .attr('x2', function (d) { return d.x; })
                 .attr('y2', function (d) { return d.y; })
-                .attr("stroke", function (d) { return treeInterp(1-(d.depth / 11)); });
+                .attr("stroke", function (d) { return treeInterp(1- (d.depth / 11)); });
           }, 
           function (exit) {
             exit
@@ -1333,7 +1386,7 @@
               .attr("opacity", "0.0")
               .attr("fill", function (d) { 
 
-                return d.data.leaf ? "black" : interp(3 / 11)
+                return d.data.leaf ? interp(7 / 11) : interp(3 / 11)
               })
               .call(initializeRadius)
               .transition(t)
@@ -1432,8 +1485,8 @@
   var treeWidth = 600;
   var treeHeight = 250;
 
-  var N = 4;
-  var codewords = getCodeWords(N - 2);
+  var N = 2;
+  var codewords = getCodeWords(N);
 
   var mapCodewords = function (cws) { return cws.map(function (code) { return ({
       value: code,
@@ -1469,22 +1522,29 @@
     .append("svg")
     .attr("id", "polygon")
     .attr("width", 250)
-    .attr("height", height - 400);
+    .attr("height", height - 300);
+
+  polySvg.append('g').attr('id', 'poly-links');
+  polySvg.append('g').attr('id', 'poly-interior-links');
+  polySvg.append('g').attr('id', 'poly-nodes');
 
   var treeSvg = d3$1.select("body")
     .append("svg")
     .attr("id", "tree")
     .attr("width", 800)
-    .attr("height", height - 400);
+    .attr("height", height - 300);
 
-  var NMenu = menuContainer.append("div");
+  menuContainer.append("div");
+
+  var NInputLabel = d3$1.select("div").append("label").text("Enter N: ");
+  var NInput = menuContainer.append("div");
+
+
   var codewordMenu = menuContainer.append("div");
   var startAnimationButton = menuContainer.append("div");
   var restartDrawButton = menuContainer.append("div");
   var codewordLabel = d3$1.select("div").append("label").text("Enter codeword: ");
   var inputButton = menuContainer.append("div");
-
-  d3$1.select("body").append("div").attr("class", "tree");
 
   var radius = 100;
   var pointSize = 4;
@@ -1494,14 +1554,13 @@
   var interp = d3["interpolateViridis"];
   var treeInterp = d3["interpolatePlasma"];
 
-  // interpolateYlOrRd
-
-  var NOptions = d3.range(4, 12).map(function (n) { return ({
-    value: n,
-    text: n,
-  }); });
+  // const NOptions = d3.range(2, 10).map((n) => ({
+  //   value: n,
+  //   text: n,
+  // }));
 
   var animationInter = null;
+  var warned = false;
 
   var index = 0;
   function playAnimation(poly, t) {
@@ -1541,6 +1600,7 @@
   var toggle = function (disable) {
     d3$1.select("#codeword-menu").property("disabled", disable);
     d3$1.select("#n-menu").property("disabled", disable);
+    d3$1.select("#n-input").property("disabled", disable);
     d3$1.select("#start-button").property("disabled", disable);
   };
 
@@ -1549,6 +1609,16 @@
       .id("codeword-menu")
       .labelText("Codeword:")
       .options(createCodewordOptions(codewords))
+      .on("focus", function () {
+        var n = poly.N() - 2;
+        if (!codewords.length || codewords[0].length != n) {
+          var cws = getCodeWords(n);
+          codewords = cws;
+          var options = createCodewordOptions(cws);
+          d3$1.select("#codeword-menu").property("selectedIndex", -1);
+          codewordMenu.call(cw.options(options));
+        }
+      })
       .on("change", function (cw) {
         var parsedCodeword = [];
         if (cw != "none") {
@@ -1568,22 +1638,30 @@
         }
       });
 
-    var nChoiceMenu = menu()
-      .id("n-menu")
-      .labelText("N:")
-      .options(NOptions)
-      .on("change", function (n) {
-        var cws = getCodeWords(n - 2);
-        codewords = cws;
-        var options = createCodewordOptions(cws);
-        d3$1.select("#codeword-menu").property("selectedIndex", -1);
-        codewordMenu.call(cw.options(options));
-        clearInterval(animationInter);
-        polySvg.call(poly.N(n));
-        codewordHeader.text(("Codeword: " + ([])));
-        treeSvg.call(t.update(poly));
-        codewordLabel.text("Enter codeword: ").style("color", "black");
-      });
+    // const nChoiceMenu = menu()
+    //   .id("n-menu")
+    //   .labelText("N:")
+    //   .options(NOptions)
+    //   .on("focus", () => {
+    //     const n = poly.N() - 2
+    //     const cws = getCodeWords(n);
+    //     codewords = cws;
+    //     const options = createCodewordOptions(cws);
+    //     select("#codeword-menu").property("selectedIndex", -1);
+    //     codewordMenu.call(cw.options(options));
+    //   })
+    //   .on("change", (n) => {
+    //     const cws = getCodeWords(n);
+    //     codewords = cws;
+    //     const options = createCodewordOptions(cws);
+    //     select("#codeword-menu").property("selectedIndex", -1);
+    //     codewordMenu.call(cw.options(options));
+    //     clearInterval(animationInter);
+    //     polySvg.call(poly.N(+n + 2));
+    //     codewordHeader.text(`Codeword: ${[]}`);
+    //     treeSvg.call(t.update(poly));
+    //     codewordLabel.text("Enter codeword: ").style("color", "black");
+    //   });
 
     var restartButton = button()
       .labelText("Restart")
@@ -1598,8 +1676,47 @@
       .labelText("View Hamiltonian Path")
       .id("start-button")
       .on("click", function (_) {
+        var n = poly.N() - 2;
+        if (!codewords.length || codewords[0].length != n) {
+          var cws = getCodeWords(n);
+          codewords = cws;
+          var options = createCodewordOptions(cws);
+          d3$1.select("#codeword-menu").property("selectedIndex", -1);
+          codewordMenu.call(cw.options(options));
+        }
         playAnimation(poly, t);
       });
+
+    var nInput = input()
+      .id("n-input")
+      // .placeholder("2, 7, etc")
+      .on("confirm", function (value) {
+        var validationRegex = /^[1-9][0-9]*$/;
+        if (validationRegex.test(value)) {
+          var n  = parseInt(value);
+          if (n >= 2) {
+          // const cws = getCodeWords(n);
+          // codewords = cws;
+          // const options = createCodewordOptions(cws);
+          d3$1.select("#codeword-menu").property("selectedIndex", -1);
+          // codewordMenu.call(cw.options(options));
+          clearInterval(animationInter);
+          polySvg.call(poly.N(+n + 2));
+          codewordHeader.text(("Codeword: " + ([])));
+          treeSvg.call(t.update(poly));
+          NInputLabel.text("Enter N:").style("color", "black");
+          if (n > 9 && !warned) {
+            warned = true;
+            alert("Note: When viewing the codewords or visualizing the Hamiltonian path for n > 9, your browser may slow down, especially for larger values of n");
+          }
+        } else {
+          NInputLabel.text("N must be greater than 1.").style("color", "red");
+        }
+      } else {
+        NInputLabel.text("Invalid N.").style("color", "red");
+      }
+    });
+
 
     var codewordInput = input()
       .id("codeword-input")
@@ -1624,7 +1741,7 @@
       });
 
     var poly = polygon()
-      .N(N)
+      .N(N + 2)
       .codeword(codeword)
       .radius(radius)
       .pointSize(pointSize)
@@ -1645,8 +1762,9 @@
     restartDrawButton.call(restartButton);
     inputButton.call(codewordInput);
     codewordMenu.call(cw);
+    NInput.call(nInput);
     polySvg.call(poly);
-    NMenu.call(nChoiceMenu);
+    // NMenu.call(nChoiceMenu);
 
     var t = tree()
       .width(treeWidth)

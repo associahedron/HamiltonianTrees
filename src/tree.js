@@ -15,9 +15,12 @@ export const tree = () => {
   
   const my = (selection) => {
     const t = transition().duration(transDuration);
-    const tree = d3.cluster().size([width, height])
+    const tree = d3.cluster()
+    .nodeSize([20, 25])
+    // .size([width, height])
+    // .nodeSize([20, 20])
     // .separation((a, b) => {
-    //   return (a.parent == b.parent ? 1 : 2)
+    //   return (a.parent == b.parent ? 1 : 10)
     // })
 
     const initializeRadius = (circles) => {
@@ -49,8 +52,17 @@ export const tree = () => {
       })
 
       const treeData = tree(root)
+      // treeData.y = treeData.y + 20
+
       n = treeData.descendants()
-      n[0].y = 20
+
+      for (let i = 0; i < n.length; i++) {
+        n[i].x = n[i].x + 30 * N
+        n[i].y = n[i].y + 80
+      }
+
+  
+      n[0].y = n[0].y - (N * 5)
       links = treeData.descendants().slice(1) 
     }
 
@@ -73,7 +85,7 @@ export const tree = () => {
             .attr('y1', d => d.parent.y)
             .attr('x2', d => d.x)
             .attr('y2', d => d.y)
-            .attr("stroke", (d) => treeInterp(1-(d.depth / 11)))
+            .attr("stroke", (d) => treeInterp(1- (d.depth / 11)))
         },
         (update) => {
           update
@@ -82,7 +94,7 @@ export const tree = () => {
               .attr('y1', d => d.parent.y)
               .attr('x2', d => d.x)
               .attr('y2', d => d.y)
-              .attr("stroke", (d) => treeInterp(1-(d.depth / 11)))
+              .attr("stroke", (d) => treeInterp(1- (d.depth / 11)))
         }, 
         (exit) => {
           exit
@@ -103,7 +115,7 @@ export const tree = () => {
             .attr("opacity", "0.0")
             .attr("fill", (d) => { 
 
-              return d.data.leaf ? "black" : interp(3 / 11)
+              return d.data.leaf ? interp(7 / 11) : interp(3 / 11)
             })
             .call(initializeRadius)
             .transition(t)

@@ -50,17 +50,12 @@ const positionEdges = (e1, e2) => {
     }
   }
 
-  // console.log(count, "HEREEEEE")
-
   if (count > 1) return e2;
 
   let keys = unusedIndex.keys();
   let value = keys.next().value;
 
   new_res[value] = unused;
-
-  // console.log(JSON.stringify(new_res.map(d => ("" + d.start_idx + d.end_idx))), "RESULT")
-  // console.log(JSON.stringify(new_res), "CHECK ME")
   return new_res;
 };
 
@@ -147,8 +142,8 @@ export const polygon = () => {
 
     const positionText = (text) => {
       text
-        .attr("x", (d) => d.x - 3 + d.ux * 15)
-        .attr("y", (d) => d.y + 6 + d.uy * 15);
+        .attr("x", (_, i) => points[i].x - 3 + points[i].ux * 15)
+        .attr("y", (_, i) => points[i].y + 6 + points[i].uy * 15);
     };
 
     const calculateDashArr = (edge) => {
@@ -173,36 +168,71 @@ export const polygon = () => {
 
     selection
       .selectAll(".vertex-label")
-      .data(points)
+      .data(codeword)
       .join(
         (enter) => {
           enter
             .append("text")
             .attr("class", "vertex-label")
-            .attr("font-size", "0px")
+            .attr("opacity", "0.0")
+            .attr("font-size", fontSize)
             .call(positionText)
             .transition(t)
-            .attr("font-size", fontSize)
-            .text((_, i) => i);
+
+            .attr("opacity", "1.0")
+            .text((d) => d)
+             
+            // });
         },
 
         (update) =>
-          update.call((update) => update.transition(t).call(positionText)),
-        (exit) => exit.transition(t).attr("font-size", "0px").remove()
+          update.call((update) => update
+          // .attr("opacity", "0.0")
+          .transition(t)
+          // .attr("font-size", fontSize)
+          // .attr("opacity", "1.0")
+          .text((d) => d)
+          .call(positionText)),
+        (exit) => exit
+          .transition(t)
+          .attr("opacity", "0.0")
+          .remove()
       )
-      .transition(t)
-      .attr("opacity", "1.0")
-      .text((_, i) => i);
+      // .attr("opacity", "0.0")
+      // .transition(t)
+      // .attr("opacity", "1.0")
+      // .text((d, i) => {
+      //   if (codeword[i] != null) {
+      //     return codeword[i].toString()
+      //   }            
+      // })
 
     selection
+      .select("#poly-nodes")
+      .selectAll(".edge-node")
+      .data(polygonEdges.map((e) => e.midpoint ).slice(0, -1))
+      .join(
+        (enter) =>
+          enter
+            .append("circle")
+            .attr("class", "edge-node")
+            .call(enterCircles, interp(7 / 11)),
+
+        (update) =>
+          update.call((update) => update.transition(t).call(positionCircles)),
+        (exit) => exit.transition(t).call(initializeRadius).remove()
+      );
+  
+    selection
+      .select("#poly-nodes")
       .selectAll(".root")
-      .data(polygonEdges.map((e) => e.midpoint ))
+      .data(polygonEdges.map((e) => e.midpoint ).slice(-1))
       .join(
         (enter) =>
           enter
             .append("circle")
             .attr("class", "root")
-            .call(enterCircles, interp(pointColor)),
+            .call(enterCircles, "black"),
 
         (update) =>
           update.call((update) => update.transition(t).call(positionCircles)),
@@ -210,6 +240,7 @@ export const polygon = () => {
       );
 
     selection
+      .select("#poly-nodes")
       .selectAll(".vertex")
       .data(points)
       .join(
@@ -224,6 +255,7 @@ export const polygon = () => {
       );
 
     selection
+      .select("#poly-links")
       .selectAll(".polygon-lines")
       .data(polygonEdges)
       .join(
@@ -256,6 +288,7 @@ export const polygon = () => {
       .attr("stroke-width", strokeWidth);
 
     selection
+      .select("#poly-interior-links")
       .selectAll(".tree-path")
       .data(treePath)
       .join(
@@ -313,6 +346,7 @@ export const polygon = () => {
       );
 
     selection
+      .select("#poly-links")
       .selectAll(".interior")
       .data(interiorEdges)
       .join(

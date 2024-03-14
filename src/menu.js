@@ -6,7 +6,7 @@ export const menu = () => {
   let id;
   let labelText;
   let options;
-  const listeners = dispatch('change');
+  const listeners = dispatch('change', 'focus');
   const my = (selection) => {
     selection
       .selectAll('label')
@@ -22,6 +22,9 @@ export const menu = () => {
       .attr('id', id)
       .on('change', (event) => {
         listeners.call('change', null, event.target.value);
+      })
+      .on('focus', (event) => {
+        listeners.call('focus', null);
       })
       .selectAll('option')
       .data(options)

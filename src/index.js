@@ -28,8 +28,8 @@ const treeMargin = {
 const treeWidth = 600;
 const treeHeight = 250;
 
-const N = 4;
-let codewords = getCodeWords(N - 2);
+const N = 2;
+let codewords = getCodeWords(N);
 
 const mapCodewords = (cws) =>
   cws.map((code) => ({
@@ -67,22 +67,29 @@ const polySvg = select("body")
   .append("svg")
   .attr("id", "polygon")
   .attr("width", 250)
-  .attr("height", height - 400);
+  .attr("height", height - 300);
+
+polySvg.append('g').attr('id', 'poly-links')
+polySvg.append('g').attr('id', 'poly-interior-links')
+polySvg.append('g').attr('id', 'poly-nodes')
 
 const treeSvg = select("body")
   .append("svg")
   .attr("id", "tree")
   .attr("width", 800)
-  .attr("height", height - 400);
+  .attr("height", height - 300);
 
 const NMenu = menuContainer.append("div");
+
+const NInputLabel = select("div").append("label").text("Enter N: ");
+const NInput = menuContainer.append("div");
+
+
 const codewordMenu = menuContainer.append("div");
 const startAnimationButton = menuContainer.append("div");
 const restartDrawButton = menuContainer.append("div");
 const codewordLabel = select("div").append("label").text("Enter codeword: ");
 const inputButton = menuContainer.append("div");
-
-const treeContainer = select("body").append("div").attr("class", "tree");
 
 const radius = 100;
 const pointSize = 4;
@@ -92,14 +99,13 @@ const pointColor = "black";
 const interp = d3["interpolateViridis"];
 const treeInterp = d3["interpolatePlasma"];
 
-// interpolateYlOrRd
-
-const NOptions = d3.range(4, 12).map((n) => ({
-  value: n,
-  text: n,
-}));
+// const NOptions = d3.range(2, 10).map((n) => ({
+//   value: n,
+//   text: n,
+// }));
 
 let animationInter = null;
+let warned = false;
 
 let index = 0;
 function playAnimation(poly, t) {
@@ -139,6 +145,7 @@ function playAnimation(poly, t) {
 const toggle = (disable) => {
   select("#codeword-menu").property("disabled", disable);
   select("#n-menu").property("disabled", disable);
+  select("#n-input").property("disabled", disable);
   select("#start-button").property("disabled", disable);
 };
 
@@ -147,9 +154,18 @@ function main() {
     .id("codeword-menu")
     .labelText("Codeword:")
     .options(createCodewordOptions(codewords))
+    .on("focus", () => {
+      const n = poly.N() - 2
+      if (!codewords.length || codewords[0].length != n) {
+        const cws = getCodeWords(n);
+        codewords = cws;
+        const options = createCodewordOptions(cws);
+        select("#codeword-menu").property("selectedIndex", -1);
+        codewordMenu.call(cw.options(options));
+      }
+    })
     .on("change", (cw) => {
       let parsedCodeword = [];
-      let newNodes = {};
       if (cw != "none") {
         parsedCodeword = cw.split(",");
       } else {
@@ -167,22 +183,30 @@ function main() {
       }
     });
 
-  const nChoiceMenu = menu()
-    .id("n-menu")
-    .labelText("N:")
-    .options(NOptions)
-    .on("change", (n) => {
-      const cws = getCodeWords(n - 2);
-      codewords = cws;
-      const options = createCodewordOptions(cws);
-      select("#codeword-menu").property("selectedIndex", -1);
-      codewordMenu.call(cw.options(options));
-      clearInterval(animationInter);
-      polySvg.call(poly.N(n));
-      codewordHeader.text(`Codeword: ${[]}`);
-      treeSvg.call(t.update(poly));
-      codewordLabel.text("Enter codeword: ").style("color", "black");
-    });
+  // const nChoiceMenu = menu()
+  //   .id("n-menu")
+  //   .labelText("N:")
+  //   .options(NOptions)
+  //   .on("focus", () => {
+  //     const n = poly.N() - 2
+  //     const cws = getCodeWords(n);
+  //     codewords = cws;
+  //     const options = createCodewordOptions(cws);
+  //     select("#codeword-menu").property("selectedIndex", -1);
+  //     codewordMenu.call(cw.options(options));
+  //   })
+  //   .on("change", (n) => {
+  //     const cws = getCodeWords(n);
+  //     codewords = cws;
+  //     const options = createCodewordOptions(cws);
+  //     select("#codeword-menu").property("selectedIndex", -1);
+  //     codewordMenu.call(cw.options(options));
+  //     clearInterval(animationInter);
+  //     polySvg.call(poly.N(+n + 2));
+  //     codewordHeader.text(`Codeword: ${[]}`);
+  //     treeSvg.call(t.update(poly));
+  //     codewordLabel.text("Enter codeword: ").style("color", "black");
+  //   });
 
   const restartButton = button()
     .labelText("Restart")
@@ -197,8 +221,47 @@ function main() {
     .labelText("View Hamiltonian Path")
     .id("start-button")
     .on("click", (_) => {
+      const n = poly.N() - 2
+      if (!codewords.length || codewords[0].length != n) {
+        const cws = getCodeWords(n);
+        codewords = cws;
+        const options = createCodewordOptions(cws);
+        select("#codeword-menu").property("selectedIndex", -1);
+        codewordMenu.call(cw.options(options));
+      }
       playAnimation(poly, t);
     });
+
+  const nInput = input()
+    .id("n-input")
+    // .placeholder("2, 7, etc")
+    .on("confirm", (value) => {
+      const validationRegex = /^[1-9][0-9]*$/;
+      if (validationRegex.test(value)) {
+        const n  = parseInt(value)
+        if (n >= 2) {
+        // const cws = getCodeWords(n);
+        // codewords = cws;
+        // const options = createCodewordOptions(cws);
+        select("#codeword-menu").property("selectedIndex", -1);
+        // codewordMenu.call(cw.options(options));
+        clearInterval(animationInter);
+        polySvg.call(poly.N(+n + 2));
+        codewordHeader.text(`Codeword: ${[]}`);
+        treeSvg.call(t.update(poly));
+        NInputLabel.text("Enter N:").style("color", "black");
+        if (n > 9 && !warned) {
+          warned = true
+          alert("Note: When viewing the codewords or visualizing the Hamiltonian path for n > 9, your browser may slow down, especially for larger values of n")
+        }
+      } else {
+        NInputLabel.text("N must be greater than 1.").style("color", "red");
+      }
+    } else {
+      NInputLabel.text("Invalid N.").style("color", "red");
+    }
+  });
+
 
   const codewordInput = input()
     .id("codeword-input")
@@ -223,7 +286,7 @@ function main() {
     });
 
   const poly = polygon()
-    .N(N)
+    .N(N + 2)
     .codeword(codeword)
     .radius(radius)
     .pointSize(pointSize)
@@ -244,8 +307,9 @@ function main() {
   restartDrawButton.call(restartButton);
   inputButton.call(codewordInput);
   codewordMenu.call(cw);
+  NInput.call(nInput);
   polySvg.call(poly);
-  NMenu.call(nChoiceMenu);
+  // NMenu.call(nChoiceMenu);
 
   const t = tree()
     .width(treeWidth)
