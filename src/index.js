@@ -246,6 +246,7 @@ function main() {
         select("#codeword-menu").property("selectedIndex", -1);
         // codewordMenu.call(cw.options(options));
         clearInterval(animationInter);
+        poly.reset()
         polySvg.call(poly.N(+n + 2));
         codewordHeader.text(`Codeword: ${[]}`);
         treeSvg.call(t.update(poly));

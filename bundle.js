@@ -114,6 +114,9 @@
     return isValid;
   }
 
+  // https://github.com/associahedron/convexpolygonexplore/blob/81e57b2e5f98c1575c8601c2be784c90304e1236/codewords.py#L38
+
+
   var formatKey = function (start, end) {
     return (start + "," + end)
   };
@@ -623,6 +626,9 @@
     }
   };
 
+  // 20020, 10120
+  // 2,0,1,0, 1,0,2,0
+
   /**
    * The order of the edges in e2 is as closely matched to e1 as much as possible
    * If there are at least 2 edge differences, the original e2 is returned
@@ -637,6 +643,10 @@
     // console.log(JSON.stringify(e1.map(d => ("" + d.start_idx + d.end_idx))), "PREVIOUS")
 
     // console.log(JSON.stringify(e2.map(d => ("" + d.start_idx + d.end_idx))), "CURRENT")
+
+    // 20020, 10120
+    // 2010, 1020
+
 
     var new_res = new Array(e1.length).fill(-1);
     var numbers = Array.from(Array(e1.length).keys());
@@ -1083,7 +1093,6 @@
     };
 
     my.N = function (_) {
-      this.reset();
       return arguments.length ? ((N = _), my) : N;
     };
 
@@ -1704,6 +1713,7 @@
           d3$1.select("#codeword-menu").property("selectedIndex", -1);
           // codewordMenu.call(cw.options(options));
           clearInterval(animationInter);
+          poly.reset();
           polySvg.call(poly.N(+n + 2));
           codewordHeader.text(("Codeword: " + ([])));
           treeSvg.call(t.update(poly));

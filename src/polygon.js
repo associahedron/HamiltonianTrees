@@ -22,6 +22,10 @@ const positionEdges = (e1, e2) => {
 
   // console.log(JSON.stringify(e2.map(d => ("" + d.start_idx + d.end_idx))), "CURRENT")
 
+  // 20020, 10120
+  // 2010, 1020
+
+
   let new_res = new Array(e1.length).fill(-1);
   let numbers = Array.from(Array(e1.length).keys());
   let unusedIndex = new Set(numbers);
@@ -478,7 +482,6 @@ export const polygon = () => {
   };
 
   my.N = function (_) {
-    this.reset();
     return arguments.length ? ((N = _), my) : N;
   };
 

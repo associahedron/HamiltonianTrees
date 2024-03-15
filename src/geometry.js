@@ -1,5 +1,7 @@
 import { range } from 'd3'
 
+// https://github.com/associahedron/convexpolygonexplore/blob/81e57b2e5f98c1575c8601c2be784c90304e1236/codewords.py#L38
+
 
 const formatKey = (start, end) => {
   return `${start},${end}`
@@ -512,3 +514,6 @@ const createTriangle = (p1, p2, p3) => {
     getCentroid: () => centroid(p1, p2, p3)
   }
 }
+
+// 20020, 10120
+// 2,0,1,0, 1,0,2,0
