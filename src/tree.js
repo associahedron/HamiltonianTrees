@@ -127,7 +127,7 @@ export const tree = () => {
             update
               .transition(t)
               .call(positionCircles)
-              .attr("fill", (d) => d.data.leaf ? "black" : interp(3 / 11))
+              .attr("fill", (d) => d.data.leaf ? interp(7 / 11) : interp(3 / 11))
           ),
         (exit) => exit.transition(t).call(initializeRadius).remove()
       )    

@@ -1215,7 +1215,6 @@
         .attr("placeholder", placeholder)
         .attr("id", id)
         .on("focusout", function (e) {
-          console.log(e.target.value);
           listeners.call("focusout", null, e.target.value);
         })
         .on("keyup", function (e) {
@@ -1400,7 +1399,7 @@
           function (update) { return update.call(function (update) { return update
                 .transition(t)
                 .call(positionCircles)
-                .attr("fill", function (d) { return d.data.leaf ? "black" : interp(3 / 11); }); }
+                .attr("fill", function (d) { return d.data.leaf ? interp(7 / 11) : interp(3 / 11); }); }
             ); },
           function (exit) { return exit.transition(t).call(initializeRadius).remove(); }
         );    
