@@ -1706,6 +1706,11 @@
       var validationRegex = /^[1-9][0-9]*$/;
       if (validationRegex.test(value)) {
         var n  = parseInt(value);
+
+        if (+n + 2 == poly.N()) {
+          return
+        } 
+        
         if (n >= 2) {
           // const cws = getCodeWords(n);
           // codewords = cws;
