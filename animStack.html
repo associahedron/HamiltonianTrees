@@ -11,7 +11,7 @@
     <body>
         <div id = "Canvas2DContainer"></div>
         <script>
-          let a = new Associahedron(6, {"diameter":100, "show_circle":true}, "Canvas2DContainer");
+          let a = new Associahedron(6, {"diameter":100, "show_circle":true, "show_map":true}, "Canvas2DContainer");
           async function animate() {
             while (!a.finishedAnimation()) {
               await a.moveToNext(500);

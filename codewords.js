@@ -324,7 +324,6 @@ class Associahedron {
 		.attr("height", this.height)
 		.call(d3.drag().on("drag", this.dragNode.bind(this)))
 		.attr("style", "border-style: dotted;");
-		this.canvas.on("mousedown", this.mouseDown.bind(this));
 		this.container.obj = this;
 		// Clear all graph elements if any exist
 		this.canvas.selectAll("*").remove();
@@ -414,16 +413,27 @@ class Associahedron {
             x = 0;
         }
         //this.text.innerHTML = arrstr(c2.c.w);
+        this.xoffset = x;
+        this.yoffset = y;
+        this.updateMap();
         
         this.g.transition().duration(moveTime)
             .attr("transform", "translate(0,"+y+")");
         await new Promise(resolve => {setTimeout(() => resolve(), moveTime)});
     }
 
+    updateMap() {
+        if (this.show_map) {
+            let y = this.height/2 + this.yoffset*MAP_HEIGHT/(1.5*this.diam);
+            this.mg.attr("transform", "translate(0,"+y+")");
+        }
+    }
+
     dragNode() {
 		this.xoffset += d3.event.dx;
 		this.yoffset += d3.event.dy;
 		this.g.attr("transform", "translate("+this.xoffset+" "+this.yoffset+")");
+        this.updateMap();
 	}
 
 	/**
@@ -448,6 +458,7 @@ class Associahedron {
 	}
 
     initializeMap() {
+        const that = this;
         const g = this.mg;
         const width = this.diam/this.n;
         const height = MAP_HEIGHT;
@@ -457,18 +468,27 @@ class Associahedron {
             for (let j = 1; j < s.length; j++) {
                 let x = this.width - this.diam + j*width;
                 let r = g.append("rect")
+                .attr("i", i)
+                .attr("j", j)
                 .attr("x", x)
                 .attr("y", y)
                 .attr("width", width)
                 .attr("height", height)
                 .attr("stroke", "none")
                 if (s[j]%2 == 0) {
-                    r.attr("fill", "gray")
+                    r = r.attr("fill", "gray")
                 }
                 else {
-                    r.attr("fill", "white")
+                    r = r.attr("fill", "white")
                 }
-                
+                r.on("mousedown", function() {
+                    let xoffset = -(j-1)*1.5*that.diam;
+                    let yoffset = -i*that.diam*1.5;
+                    that.g.attr("transform", "translate("+xoffset+" "+yoffset+")");
+                    that.xoffset = xoffset;
+                    that.yoffset = yoffset;
+                    that.updateMap();
+                });
             }
             y += height;
         }
@@ -480,6 +500,17 @@ class Associahedron {
         .attr("stroke", "black")
         .attr("fill", "none")
         
+        const lg = this.canvas.append("g");
+        lg.append("line")
+        .attr("x1", this.width-this.diam+width)
+        .attr("y1", this.height/2)
+        .attr("x2", this.width-this.diam+width+this.diam*(this.n-2)/this.n)
+        .attr("y2", this.height/2)
+        .attr("stroke", d3.rgb(255, 128, 12))
+        .attr("stroke-width", 2)
+        .style("stroke-dasharray", "10, 5");
+
+        this.updateMap();
     }
 
     make_stack_rec(w, d, g_x_offset, y_offset, opts, g) {
