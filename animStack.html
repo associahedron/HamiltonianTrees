@@ -2,7 +2,6 @@
     <head>
         <script src="jslibs/d3.min.js"></script>
         <script src="jslibs/d3-polygon.min.js"></script>
-        <script src="codewords.js"></script>
         <title>Hamiltonian Tree Stacks</title>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
@@ -10,15 +9,6 @@
 
     <body>
         <div id = "Canvas2DContainer"></div>
-        <script>
-          let a = new Associahedron(6, {"diameter":100, "show_circle":true, "show_map":true}, "Canvas2DContainer");
-          async function animate() {
-            while (!a.finishedAnimation()) {
-              await a.moveToNext(500);
-            }
-          }
-          animate();
-        </script>
-
+        <script type="module" src="animStack.js"></script>
     </body>
 </html>

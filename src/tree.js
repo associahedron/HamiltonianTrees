@@ -16,7 +16,7 @@ export const tree = () => {
   const my = (selection) => {
     const t = transition().duration(transDuration);
     const tree = d3.cluster()
-    .nodeSize([20, 25])
+    .nodeSize([11, 14])
     // .size([width, height])
     // .nodeSize([20, 20])
     // .separation((a, b) => {
@@ -57,7 +57,7 @@ export const tree = () => {
       n = treeData.descendants()
 
       for (let i = 0; i < n.length; i++) {
-        n[i].x = n[i].x + 30 * N
+        n[i].x = n[i].x + 17 * N
         n[i].y = n[i].y + 80
       }
 

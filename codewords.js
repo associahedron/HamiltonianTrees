@@ -266,7 +266,7 @@ class Codeword {
 }
 
 
-class Associahedron {
+export class Associahedron {
     /**
      * 
      * @param {int} n 
@@ -323,7 +323,7 @@ class Associahedron {
 		.attr("width", this.width)
 		.attr("height", this.height)
 		.call(d3.drag().on("drag", this.dragNode.bind(this)))
-		.attr("style", "border-style: dotted;");
+		// .attr("style", "border-style: dotted;");
 		this.container.obj = this;
 		// Clear all graph elements if any exist
 		this.canvas.selectAll("*").remove();
@@ -397,26 +397,52 @@ class Associahedron {
         }
         let x = 0;
         const y = -c2.y+0.065*this.diam*this.n;
+        let message = ""
         if (newStack) {
-            /*this.text.innerHTML = "Moving to new stack of dimension " + i;
-            this.text.innerHTML += " where w["+(i+1)+"] = " + c2.c.w[i+1];
-            if (s2[i]%2 == 0) {
-                this.text.innerHTML += " and where w["+i+"] goes down in reverse from " + c2.c.w[i];
-            }
-            else {
-                this.text.innerHTML += " and where w["+i+"] goes up from " + c2.c.w[i];
-            }*/
+            message = "Jumping to a new stack of dimension"
+
+            // this.text.innerHTML = "Moving to new stack of dimension " + i;
+            // message += " where w["+(i+1)+"] = " + c2.c.w[i+1];
+            // if (s2[i]%2 == 0) {
+            //     message += " and where w["+i+"] goes down in reverse from " + c2.c.w[i];
+            // }
+            
+            // else {
+            //     message += " and where w["+i+"] goes up from " + c2.c.w[i];
+            // }
+
             x = -this.diam*i*1.5;
             this.g.transition().duration(moveTime*2)
             .attr("transform", "translate("+x+","+y+")");
             await new Promise(resolve => {setTimeout(() => resolve(), moveTime*2)});
             x = 0;
         }
-        //this.text.innerHTML = arrstr(c2.c.w);
+        if (message != "")  {
+            d3.select("#reverse-text").text(message)
+            d3.select("#dim-stack").text(i)
+            setTimeout(() => { d3.select("#reverse-text").text(" ")}, 5000)
+            setTimeout(() => { d3.select("#dim-stack").text(" ")}, 5000)
+        }
+        // this.text.innerHTML = arrstr(c2.c.w);
         this.xoffset = x;
         this.yoffset = y;
         this.updateMap();
         
+        this.g.transition().duration(moveTime)
+            .attr("transform", "translate(0,"+y+")");
+        await new Promise(resolve => {setTimeout(() => resolve(), moveTime)});
+    }
+
+    /**
+     * @param {string} codeword The codeword to animate to
+     * @param {float} moveTime Animation timestep, in milliseconds  
+     */
+    async animateToCodeword(codeword, moveTime) {
+        let position = this.codeword_obj[codeword]
+        const y = -position.y+0.065*this.diam*this.n;
+        this.xoffset = 0;
+        this.yoffset = position.y;
+        this.updateMap();
         this.g.transition().duration(moveTime)
             .attr("transform", "translate(0,"+y+")");
         await new Promise(resolve => {setTimeout(() => resolve(), moveTime)});
@@ -446,14 +472,14 @@ class Associahedron {
 	/**
 	 * A function which toggles all of the visible elements to show
 	 */
-	show = function() {
+	show() {
 		this.container.style("display", "block");
 	}
 
 	/**
 	 * A function which toggles all of the visible elements to hide
 	 */
-	hide = function() {
+	hide() {
 		this.container.style("display", "none");
 	}
 

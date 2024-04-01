@@ -6,5 +6,10 @@
   "devDependencies": {
     "@rollup/plugin-buble": "latest",
     "rollup": "latest"
+  },
+  "dependencies": {
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "rollup-plugin-babel": "^4.4.0",
+    "rollup-plugin-node-resolve": "^5.2.0"
   }
 }

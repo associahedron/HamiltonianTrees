@@ -5,6 +5,8 @@ import { menu } from "./menu";
 import { input } from "./input";
 import { button } from "./button";
 import { tree } from "./tree";
+import { Associahedron } from "../codewords"
+
 
 // https://gist.github.com/mbostock/1125997
 // https://observablehq.com/@mbostock/scrubber
@@ -53,44 +55,36 @@ let codeword = [];
 const width = window.innerWidth - margin.left - margin.right;
 const height = window.innerHeight - margin.top - margin.bottom;
 
-select("body").append("h1").text(`Rotational Hamiltonian Trees`);
+const codewordHeader = select("#codeword-text")
 
-const codewordHeader = select("body")
-  .append("h3")
-  .text(`Codeword: ${codeword}`);
+const exploreLink = select("#stack-explore-link").text("Click to explore stack for n=2").attr("href", "scrollStack.html?n=2");
 
-const menuContainer = select("body")
-  .append("div")
-  .attr("class", "menu-container");
 
-const polySvg = select("body")
-  .append("svg")
-  .attr("id", "polygon")
+const menuContainer = select(".menu-container")
+
+const polySvg = select("#polygon")
   .attr("width", 250)
-  .attr("height", height - 300);
+  .attr("height", height - 500);
 
-polySvg.append('g').attr('id', 'poly-links')
-polySvg.append('g').attr('id', 'poly-interior-links')
-polySvg.append('g').attr('id', 'poly-nodes')
+const treeSvg = select("#tree")
+  .attr("width", 300)
+  .attr("height", height - 500);
 
-const treeSvg = select("body")
-  .append("svg")
-  .attr("id", "tree")
-  .attr("width", 800)
-  .attr("height", height - 300);
+  
 
-const NMenu = menuContainer.append("div");
-
-const NInputLabel = select("div").append("label").text("Type N and press Enter: ");
+const NInputLabel = menuContainer.append("label").text("Type N and press Enter: ");
 const NInput = menuContainer.append("div");
-
-
 const codewordMenu = menuContainer.append("div");
-const startAnimationButton = menuContainer.append("div");
-const restartDrawButton = menuContainer.append("div");
-const codewordLabel = select("div").append("label").text("Type codeword and press Enter: ");
+
+const codewordLabel = menuContainer.append("label").text("Type codeword and press Enter: ");
 const inputButton = menuContainer.append("div");
 
+menuContainer.append("br")
+const startAnimationButton = menuContainer.append("div").attr("id", "anim-buttons").append("span");
+
+const restartDrawButton = menuContainer.select("#anim-buttons").append("span");
+
+// menuContainer.append("hr").attr("color", "#DCDCDC")
 const radius = 100;
 const pointSize = 4;
 
@@ -99,48 +93,63 @@ const pointColor = "black";
 const interp = d3["interpolateViridis"];
 const treeInterp = d3["interpolatePlasma"];
 
-// const NOptions = d3.range(2, 10).map((n) => ({
-//   value: n,
-//   text: n,
-// }));
-
 let animationInter = null;
 let warned = false;
+let endAnimation = false;
+let isAnimating = false;
 
-let index = 0;
 function playAnimation(poly, t) {
+  if (!isAnimating) {
+    isAnimating = true
+    animate(poly, t)  
+  }
+}
+
+
+async function animate(poly, t) {
+
+  function update() {
+    let index = associahedron.animIndex
+    let cw = codewords[index];
+    polySvg.call(poly.codeword(cw));
+    treeSvg.call(t.update(poly));
+    select("#codeword-menu").property("selectedIndex", index + 1);
+    codewordHeader.text(`Codeword: ${cw}`);
+  }
   let started = poly.treePath().length == 0
-  function callback() {
-    if (index >= codewords.length) {
-      index = 0;
-      clearInterval(animationInter);
-    } else {
-      let cw = codewords[index];
-      polySvg.call(poly.codeword(cw));
-      treeSvg.call(t.update(poly));
-      select("#codeword-menu").property("selectedIndex", index + 1);
-      codewordHeader.text(`Codeword: ${cw}`);
-      index += 1;
+  
 
-      clearInterval(animationInter)
-      let timeout = 0
-      if (started) {
-        started = false
-        timeout = 250 * poly.N()
-      }
+  await new Promise(resolve => {
+    setTimeout(() => resolve(), 1000);
+  });
 
-      setTimeout(() => {
-        animationInter = setInterval(callback, 1000);
-      }, timeout)
-
-
+  while (!associahedron.finishedAnimation() && !endAnimation) {
+    if (endAnimation) {
+      break
     }
+    update()
+    let timeout = 0
+    if (started) {
+      started = false
+      timeout = 250 * poly.N() + 1000
+    }
+    await new Promise(resolve => {
+      setTimeout(() => resolve(), Math.max(timeout, 1000));
+    });
+
+    if (endAnimation) {
+      break
+    }
+
+    await associahedron.moveToNext(1000);  
   }
 
-  clearInterval(animationInter);
-  index = 0;
-  animationInter = setInterval(callback, 1000);
+  if (!endAnimation) {
+    update()
+  }
+  isAnimating = false
 }
+
 
 const toggle = (disable) => {
   select("#codeword-menu").property("disabled", disable);
@@ -149,6 +158,8 @@ const toggle = (disable) => {
   select("#start-button").property("disabled", disable);
 };
 
+let associahedron = new Associahedron(2, {"diameter": 100, "show_circle": true, "show_map": true}, "polygon-container");
+ 
 function main() {
   const cw = menu()
     .id("codeword-menu")
@@ -176,7 +187,9 @@ function main() {
       codewordHeader.text(`Codeword: ${parsedCodeword}`);
       codewordLabel.text("Type codeword and press Enter:  ").style("color", "black");
 
+      endAnimation = true
       if (cw != "none") {
+        associahedron.animateToCodeword(cw, 1000)
         treeSvg.call(t.update(poly));
       } else {
         treeSvg.call(t.reset());
@@ -212,7 +225,9 @@ function main() {
     .labelText("Restart")
     .id("restart-button")
     .on("click", (_) => {
-      clearInterval(animationInter);
+      endAnimation = true
+      associahedron.resetAnimation()
+      associahedron.animateToCodeword(associahedron.codewords[0].c.w.join(","), 1000)
       polySvg.call(poly.reset());
       treeSvg.call(t.reset());
     });
@@ -222,6 +237,8 @@ function main() {
     .id("start-button")
     .on("click", (_) => {
       const n = poly.N() - 2
+      associahedron.resetAnimation()
+      associahedron.animateToCodeword(associahedron.codewords[0].c.w.join(","), 1000)
       if (!codewords.length || codewords[0].length != n) {
         const cws = getCodeWords(n);
         codewords = cws;
@@ -229,6 +246,7 @@ function main() {
         select("#codeword-menu").property("selectedIndex", -1);
         codewordMenu.call(cw.options(options));
       }
+      endAnimation = false
       playAnimation(poly, t);
     });
 
@@ -245,6 +263,7 @@ function main() {
       } 
       
       if (n >= 2) {
+        endAnimation = true
         // const cws = getCodeWords(n);
         // codewords = cws;
         // const options = createCodewordOptions(cws);
@@ -256,10 +275,18 @@ function main() {
         codewordHeader.text(`Codeword: ${[]}`);
         treeSvg.call(t.update(poly));
         NInputLabel.text("Type N and press Enter: ").style("color", "black");
+        exploreLink.text("Click to explore stack for n=" + n).attr("href", "scrollStack.html?n=" + n);
+        
+        d3.selectAll("#polygon-container_Canvas") 
+          .remove(); 
+        associahedron = new Associahedron(+n, {"diameter": 80, "show_circle": true, "show_map": true}, "polygon-container");
+
+
         if (n > 9 && !warned) {
           warned = true
           alert("Note: When viewing the codewords or visualizing the Hamiltonian path for n > 9, your browser may slow down, especially for larger values of n")
         }
+        
       } else {
         NInputLabel.text("N must be greater than 1.").style("color", "red");
       }
@@ -277,6 +304,7 @@ function main() {
     })
     .on("confirm", (value) => {
       onNConfirm(value)
+      
     });
 
 
@@ -288,11 +316,13 @@ function main() {
       const codeword = value.split(",");
       const n = poly.N();
       if (codeword.length == n - 2 && isValidCodeword(codeword, n - 2)) {
+        endAnimation = true
         clearInterval(animationInter);
         polySvg.call(poly.codeword(codeword));
         codewordHeader.text(`Codeword: ${codeword}`);
         treeSvg.call(t.update(poly));
         codewordLabel.text("Type codeword and press Enter: ").style("color", "black");
+        associahedron.animateToCodeword(value, 1000)
       } else {
         codewordLabel.text("Invalid codeword.").style("color", "red");
       }

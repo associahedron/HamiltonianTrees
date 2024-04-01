@@ -1,19 +1,59 @@
-body {
-  margin: 0;
-  overflow: hidden;
-}
-text {
-  font-size: 24px;
-  font-family: 'Share Tech', sans-serif;
+
+#title {
+  margin-bottom: 5px;
 }
 
-.menu-container {
+.min-height {
+  min-height: 25px;
+}
+
+body {
+  /* margin: 0; */
+  /* overflow: hidden; */
+  font-family: Georgia, serif;;
+}
+
+#dim-stack {
+  font-weight: bold;
+  font-size: 20px;
+}
+
+#right-container {
+  right: 0;
+  /* background-color: red; */
+}
+
+.center-text {
+  text-align: center;
+}
+
+.split {
+  height: 100%;
+  width: 50%;
   position: fixed;
+  z-index: 1;
+  top: 0;
+  overflow-x: hidden;
+  padding-top: 20px;
+}
+
+/* text {
+  /* font-size: 24px; */
+  /* font-family: 'Share Tech', sans-serif; */
+/* } */ */
+
+/* hr {
+  color: ";
+} */
+
+
+.menu-container {
+  /* position: fixed;
   top: 0;
   left: 0;
   right: 0;
   display: flex;
-  justify-content: space-around; 
+  justify-content: space-around;  */
 }
 
 .tree {
