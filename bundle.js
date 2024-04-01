@@ -1425,7 +1425,8 @@
     }
 
     /**
-     * @param {string} Str 
+     * @param {string} codeword The codeword to animate to
+     * @param {float} moveTime Animation timestep, in milliseconds  
      */
     async animateToCodeword(codeword, moveTime) {
       let position = this.codeword_obj[codeword];
@@ -1712,7 +1713,7 @@
   let associahedron = new Associahedron(2, {
     "diameter": 100,
     "show_circle": true,
-    "show_map": true
+    "show_map": false
   }, "polygon-container");
   function main() {
     const cw = menu().id("codeword-menu").labelText("Codeword:").options(createCodewordOptions(codewords)).on("focus", () => {
@@ -1815,7 +1816,7 @@
           associahedron = new Associahedron(+n, {
             "diameter": 80,
             "show_circle": true,
-            "show_map": true
+            "show_map": false
           }, "polygon-container");
           if (n > 9 && !warned) {
             warned = true;
