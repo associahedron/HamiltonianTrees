@@ -18,6 +18,10 @@ body {
   font-size: 20px;
 }
 
+#left-container {
+  overflow: hidden;
+}
+
 #right-container {
   right: 0;
   /* background-color: red; */

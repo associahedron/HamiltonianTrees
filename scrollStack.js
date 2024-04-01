@@ -15,4 +15,4 @@ if (n === null) {
   n = 7;
 }
 
-let a = new Associahedron(n, {"diameter":100, "show_map":true, "show_circle":true}, "Canvas2DContainer");
+let a = new Associahedron(n, {"diameter":100, "show_map":true, "show_circle":false}, "Canvas2DContainer");
