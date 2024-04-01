@@ -158,7 +158,7 @@ const toggle = (disable) => {
   select("#start-button").property("disabled", disable);
 };
 
-let associahedron = new Associahedron(2, {"diameter": 100, "show_circle": true, "show_map": true}, "polygon-container");
+let associahedron = new Associahedron(2, {"diameter": 100, "show_circle": true, "show_map": false}, "polygon-container");
  
 function main() {
   const cw = menu()
@@ -279,7 +279,7 @@ function main() {
         
         d3.selectAll("#polygon-container_Canvas") 
           .remove(); 
-        associahedron = new Associahedron(+n, {"diameter": 80, "show_circle": true, "show_map": true}, "polygon-container");
+        associahedron = new Associahedron(+n, {"diameter": 80, "show_circle": true, "show_map": false}, "polygon-container");
 
 
         if (n > 9 && !warned) {
