@@ -1640,8 +1640,8 @@
   const codewordHeader = d3$1.select("#codeword-text");
   const exploreLink = d3$1.select("#stack-explore-link").text("Click to explore stack for n=2").attr("href", "scrollStack.html?n=2");
   const menuContainer = d3$1.select(".menu-container");
-  const polySvg = d3$1.select("#polygon").attr("width", 250).attr("height", height - 500);
-  const treeSvg = d3$1.select("#tree").attr("width", 300).attr("height", height - 500);
+  const polySvg = d3$1.select("#polygon").attr("width", 250).attr("height", height - 490);
+  const treeSvg = d3$1.select("#tree").attr("width", 300).attr("height", height - 490);
   const NInputLabel = menuContainer.append("label").text("Type N and press Enter: ");
   const NInput = menuContainer.append("div");
   const codewordMenu = menuContainer.append("div");

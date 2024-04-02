@@ -64,13 +64,11 @@ const menuContainer = select(".menu-container")
 
 const polySvg = select("#polygon")
   .attr("width", 250)
-  .attr("height", height - 500);
+  .attr("height", height - 490);
 
 const treeSvg = select("#tree")
   .attr("width", 300)
-  .attr("height", height - 500);
-
-  
+  .attr("height", height - 490);
 
 const NInputLabel = menuContainer.append("label").text("Type N and press Enter: ");
 const NInput = menuContainer.append("div");
